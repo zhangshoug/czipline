@@ -63,7 +63,7 @@ class Pairtrade(TradingAlgorithm):
     def handle_data(self, data):
         ######################################################
         # 1. Compute regression coefficients between PEP and KO
-        params = self.ols_transform.handle_data(data, 'PEP', 'KO')
+        params = self.ols_transform(data, 'PEP', 'KO')
         if params is None:
             return
         intercept, slope = params

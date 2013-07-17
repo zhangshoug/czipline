@@ -52,6 +52,8 @@ from zipline.gens.composites import (
 )
 from zipline.gens.tradesimulation import AlgorithmSimulator
 
+from zipline.transforms.batch_transform import array
+
 DEFAULT_CAPITAL_BASE = float("1.0e5")
 
 
@@ -95,7 +97,10 @@ class TradingAlgorithm(object):
 
         self.registered_transforms = {}
         self.transforms = []
+        self.batchtransforms = {}
         self.sources = []
+
+        self._lookback = None
 
         self._recorded_vars = {}
 
@@ -302,6 +307,10 @@ class TradingAlgorithm(object):
 
             self.transforms.append(sf)
 
+        # Create lookback batch_transform
+        if self._lookback is not None:
+            self.batchtransforms['array'] = array(window_length=self._lookback)
+
         # create transforms and zipline
         self.gen = self._create_generator(sim_params)
 
@@ -338,6 +347,9 @@ class TradingAlgorithm(object):
 
         return daily_stats
 
+    def add_batchtransform(self, batch_transform, tag):
+        self.batchtransforms[tag] = batch_transform
+
     def add_transform(self, transform_class, tag, *args, **kwargs):
         """Add a single-sid, sequential transform to the model.
 
@@ -353,8 +365,8 @@ class TradingAlgorithm(object):
 
         """
         self.registered_transforms[tag] = {'class': transform_class,
-                                           'args': args,
-                                           'kwargs': kwargs}
+                                            'args': args,
+                                            'kwargs': kwargs}
 
     def record(self, **kwargs):
         """
@@ -392,6 +404,9 @@ class TradingAlgorithm(object):
         assert dt.tzinfo == pytz.utc, \
             "Algorithm expects a utc datetime"
         self.datetime = dt
+
+    def set_lookback(self, lookback):
+        self._lookback = lookback
 
     def get_datetime(self):
         """

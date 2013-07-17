@@ -173,6 +173,7 @@ class BatchTransform(object):
         """
         Point of entry. Process an event frame.
         """
+        data = {key: val for key, val in data.iteritems() if val is not None}
         # extract dates
         dts = [event.datetime for event in data.itervalues()]
         # we have to provide the event with a dt. This is only for
@@ -350,8 +351,9 @@ class BatchTransform(object):
             self.latest_names = self._extract_field_names(event)
             return set.union(self.field_names, self.latest_names)
 
+batch_transform = BatchTransform
 
-def batch_transform(func):
+def batch_transform_shared(func):
     """Decorator function to use instead of inheriting from BatchTransform.
     For an example on how to use this, see the doc string of BatchTransform.
     """
@@ -363,3 +365,7 @@ def batch_transform(func):
         return BatchTransform(*args, func=func, **kwargs)
 
     return create_window
+
+@batch_transform_shared
+def array(data):
+    return data

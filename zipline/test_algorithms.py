@@ -73,6 +73,7 @@ The algorithm must expose methods:
 """
 from copy import deepcopy
 import numpy as np
+import pandas as pd
 
 from zipline.algorithm import TradingAlgorithm
 from zipline.finance.slippage import FixedSlippage
@@ -333,7 +334,7 @@ class TestTargetValueAlgorithm(TradingAlgorithm):
 
 
 from zipline.algorithm import TradingAlgorithm
-from zipline.transforms import BatchTransform, batch_transform
+from zipline.transforms import BatchTransform, batch_transform_shared, batch_transform
 from zipline.transforms import MovingAverage
 
 
@@ -359,29 +360,32 @@ class ReturnPriceBatchTransform(BatchTransform):
             format(data.shape[1], self.window_length, data)
         return data.price
 
+@batch_transform(window_length=5)
+def return_price_batch_instantiated(data):
+    return data.price
 
-@batch_transform
+@batch_transform_shared
 def return_price_batch_decorator(data):
     return data.price
 
 
-@batch_transform
+@batch_transform_shared
 def return_args_batch_decorator(data, *args, **kwargs):
     return args, kwargs
 
 
-@batch_transform
+@batch_transform_shared
 def return_data(data, *args, **kwargs):
     return data
 
 
-@batch_transform
+@batch_transform_shared
 def uses_ufunc(data, *args, **kwargs):
     # ufuncs like np.log should not crash
     return np.log(data)
 
 
-@batch_transform
+@batch_transform_shared
 def price_multiple(data, multiplier, extra_arg=1):
     return data.price * multiplier * extra_arg
 
@@ -396,6 +400,7 @@ class BatchTransformAlgorithm(TradingAlgorithm):
 
         self.history_return_price_class = []
         self.history_return_price_decorator = []
+        self.history_return_price_instantiated = []
         self.history_return_args = []
         self.history_return_arbitrary_fields = []
         self.history_return_nan = []
@@ -482,6 +487,8 @@ class BatchTransformAlgorithm(TradingAlgorithm):
             self.return_price_class.handle_data(data))
         self.history_return_price_decorator.append(
             self.return_price_decorator.handle_data(data))
+        self.history_return_price_instantiated.append(
+            return_price_batch_instantiated(data))
         self.history_return_args.append(
             self.return_args_batch.handle_data(
                 data, *self.args, **self.kwargs))
@@ -613,3 +620,41 @@ class TALIBAlgorithm(TradingAlgorithm):
                 else:
                     result = (np.nan,) * len(t.talib_fn.output_names)
             self.talib_results[t].append(result)
+
+
+class LookbackAlgorithm(TradingAlgorithm):
+    def initialize(self):
+        self.set_lookback(5)
+        self.counter = 0
+
+    def handle_data(self, data):
+        self.counter += 1
+
+        assert 'array' in data
+        if self.counter <= 4:
+            assert data['array'] is None
+
+        else:
+            array = data['array']
+            assert isinstance(array, pd.Panel)
+            assert array.shape == [2, 5, 1]
+
+
+class RegisterBatchAlgorithm(TradingAlgorithm):
+    def initialize(self):
+        self.add_batchtransform(return_data(window_length=5),
+                                'return_data')
+
+        self.counter = 0
+
+    def handle_data(self, data):
+        self.counter += 1
+
+        assert 'return_data' in data
+        if self.counter <= 4:
+            assert data['return_data'] is None
+
+        else:
+            array = data['return_data']
+            assert isinstance(array, pd.Panel)
+            assert array.shape == [2, 5, 1]

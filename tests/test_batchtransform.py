@@ -29,15 +29,17 @@ import zipline.utils.factory as factory
 
 from zipline.test_algorithms import (BatchTransformAlgorithm,
                                      BatchTransformAlgorithmMinute,
-                                     batch_transform,
-                                     ReturnPriceBatchTransform)
+                                     batch_transform_shared,
+                                     ReturnPriceBatchTransform,
+                                     LookbackAlgorithm,
+                                     RegisterBatchAlgorithm)
 
 from zipline.algorithm import TradingAlgorithm
 from zipline.utils.tradingcalendar import trading_days
 from copy import deepcopy
 
 
-@batch_transform
+@batch_transform_shared
 def return_price(data):
     return data.price
 
@@ -258,6 +260,14 @@ class TestBatchTransform(TestCase):
                 # 1990-01-08 - window now full
                 expected_item
             ])
+
+    def test_lookback(self):
+        algo = LookbackAlgorithm(sim_params=self.sim_params)
+        algo.run(self.source)
+
+    def test_register_batchtransform(self):
+        algo = RegisterBatchAlgorithm(sim_params=self.sim_params)
+        algo.run(self.source)
 
 
 def run_batchtransform(window_length=10):

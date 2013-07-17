@@ -141,6 +141,11 @@ class AlgorithmSimulator(object):
                         self.algo.perf_tracker.get_portfolio()
                     )
 
+                    # Call any batchtransforms
+                    for name, batchtransform in self.algo.batchtransforms.iteritems():
+                        panel = batchtransform.handle_data(self.current_data)
+                        self.current_data[name] = panel
+
                     # Send the current state of the universe
                     # to the user's algo.
                     if updated:

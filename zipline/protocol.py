@@ -183,6 +183,9 @@ class BarData(object):
     def items(self):
         return self._data.items()
 
+    def __repr__(self):
+        return "BarData({0})".format(self.__dict__)
+
 
 class DailyReturn(object):
 

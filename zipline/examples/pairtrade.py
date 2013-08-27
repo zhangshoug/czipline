@@ -21,17 +21,17 @@ from datetime import datetime
 import pytz
 
 from zipline.algorithm import TradingAlgorithm
-from zipline.transforms import batch_transform
+from zipline.transforms import batch_transform_shared
 from zipline.utils.factory import load_from_yahoo
 
 
-@batch_transform
-def ols_transform(data, sid1, sid2):
+@batch_transform_shared
+def ols_transform(data):
     """Computes regression coefficient (slope and intercept)
     via Ordinary Least Squares between two SIDs.
     """
-    p0 = data.price[sid1]
-    p1 = sm.add_constant(data.price[sid2], prepend=True)
+    p0 = data.price['PEP']
+    p1 = sm.add_constant(data.price['KO'], prepend=True)
     slope, intercept = sm.OLS(p0, p1).fit().params
 
     return slope, intercept
@@ -57,16 +57,17 @@ class Pairtrade(TradingAlgorithm):
         self.spreads = []
         self.invested = 0
         self.window_length = window_length
-        self.ols_transform = ols_transform(refresh_period=self.window_length,
-                                           window_length=self.window_length)
+        self.add_batchtransform(ols_transform(refresh_period=self.window_length,
+                                              window_length=self.window_length),
+                                'regression')
+
 
     def handle_data(self, data):
         ######################################################
         # 1. Compute regression coefficients between PEP and KO
-        params = self.ols_transform(data, 'PEP', 'KO')
-        if params is None:
+        if data['regression'] is None:
             return
-        intercept, slope = params
+        intercept, slope = data['regression']
 
         ######################################################
         # 2. Compute spread and zscore

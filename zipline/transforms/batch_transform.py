@@ -173,7 +173,8 @@ class BatchTransform(object):
         """
         Point of entry. Process an event frame.
         """
-        data = {key: val for key, val in data.iteritems() if val is not None}
+        data = {key: val for key, val in data.iteritems() if val is not None
+                and 'datetime' in val}
         # extract dates
         dts = [event.datetime for event in data.itervalues()]
         # we have to provide the event with a dt. This is only for

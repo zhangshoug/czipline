@@ -175,7 +175,6 @@ class AlgorithmSimulator(object):
                         bm_updated = False
                         self.algo.updated_portfolio()
                         yield self.get_message(date)
-
                     # When emitting minutely, we re-iterate the day as a
                     # packet with the entire days performance rolled up.
                     if self.algo.perf_tracker.emission_rate == 'minute':

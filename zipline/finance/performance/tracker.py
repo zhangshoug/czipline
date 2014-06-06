@@ -369,7 +369,6 @@ class PerformanceTracker(object):
         When the simulation is complete, run the full period risk report
         and send it out on the results socket.
         """
-
         log_msg = "Simulated {n} trading days out of {m}."
         log.info(log_msg.format(n=int(self.day_count), m=self.total_days))
         log.info("first open: {d}".format(

@@ -75,7 +75,6 @@ class Blotter(object):
         self.current_dt = dt
 
     def order(self, sid, amount, style, order_id=None):
-
         # something could be done with amount to further divide
         # between buy by share count OR buy shares up to a dollar amount
         # numeric == share count  AND  "$dollar.cents" == cost amount

@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-
+from matplotlylib import fig_to_plotly
 
 def analyze(context, perf):
     fig = plt.figure()
@@ -20,3 +20,4 @@ def analyze(context, perf):
              'v', markersize=10, color='k')
     plt.legend(loc=0)
     plt.show()
+    print fig_to_plotly(fig)

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 from six import iteritems, iterkeys
+import ujson as json
 
 from . utils.protocol_utils import Enum
 
@@ -84,7 +85,9 @@ class Portfolio(object):
         return self.__dict__[key]
 
     def __repr__(self):
-        return "Portfolio({0})".format(self.__dict__)
+        dict = self.__dict__.copy()
+        dict["_quanto_type"] = "Portfolio"
+        return json.dumps(dict)
 
 
 class Position(object):
@@ -99,7 +102,9 @@ class Position(object):
         return self.__dict__[key]
 
     def __repr__(self):
-        return "Position({0})".format(self.__dict__)
+        dict = self.__dict__.copy()
+        dict["_quanto_type"] = "position"
+        return json.dumps(dict)
 
 
 class Positions(dict):
@@ -109,6 +114,14 @@ class Positions(dict):
         self[key] = pos
         return pos
 
+    def __repr__(self):
+        dict = {}
+        for key, value in iteritems(self):
+            dict[str(key)] = value
+
+        dict["_quanto_type"] = "positions"
+        return json.dumps(dict)
+        
 
 class SIDData(object):
 
@@ -144,7 +157,9 @@ class SIDData(object):
         return name in self.__dict__
 
     def __repr__(self):
-        return "SIDData({0})".format(self.__dict__)
+        dict = self.__dict__.copy()
+        dict["_quanto_type"] = "SIDData"
+        return json.dumps(dict)
 
 
 class BarData(object):
@@ -219,4 +234,10 @@ class BarData(object):
         return len(self.keys())
 
     def __repr__(self):
-        return '{0}({1})'.format(self.__class__.__name__, self._data)
+        dict = {}
+        for sid, value in iteritems(self._data):
+            if sid in self:
+                dict[sid] = value
+
+        dict["_quanto_type"] = "bardata"
+        return json.dumps(dict)

@@ -231,3 +231,14 @@ class positiondict(dict):
         pos = Position(key)
         self[key] = pos
         return pos
+
+    def __repr__(self):
+        dict = {}
+        for key, value in iteritems(self):
+            dict[str(key)] = value
+
+        dict["_quanto_type"] = "positions2"
+        return json.dumps(dict)
+
+    def __str__(self):
+        return self.__repr__()

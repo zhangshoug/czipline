@@ -44,9 +44,22 @@ class RollingPanel(object):
         self.cap = cap_multiple * window
 
         self.dtype = dtype
-        self.index_buf = np.empty(self.cap, dtype='M8[ns]')
+        self.date_buf = np.empty(self.cap, dtype='M8[ns]')
 
         self.buffer = self._create_buffer()
+
+    def _oldest_frame_idx(self):
+        return max(self.pos - self.window, 0)
+
+    def oldest_frame(self):
+        """
+        Get the oldest in-view dt and frame in the panel.
+        """
+        return self.buffer.iloc[:, self._oldest_frame_idx(), :]
+
+    def set_sids(self, sids):
+        self.minor_axis = _ensure_index(sids)
+        self.buffer = self.buffer.reindex(minor_axis=self.minor_axis)
 
     def _create_buffer(self):
         panel = pd.Panel(
@@ -55,7 +68,6 @@ class RollingPanel(object):
             major_axis=range(self.cap),
             dtype=self.dtype,
         )
-
         return panel
 
     def _update_buffer(self, frame):
@@ -89,14 +101,14 @@ class RollingPanel(object):
         # self.buffer = self.buffer.reindex(items=self.items,
         #                                   major_axis=np.arange(self.cap),
         #                                   minor_axis=self.minor_axis)
-        #
+
         # However, pandas==0.12.0, for which we remain backwards compatible,
         # has a bug in .reindex() that this triggers. Using .update() as before
         # seems to work fine.
 
-        new_buffer = self._create_buffer()
-        new_buffer.update(
-            self.buffer.loc[non_nan_items, :, non_nan_cols])
+        # new_buffer = self._create_buffer()
+        # new_buffer.update(
+        #     self.buffer.loc[non_nan_items, :, non_nan_cols])
 
         self.buffer = new_buffer
 
@@ -113,7 +125,7 @@ class RollingPanel(object):
         self.buffer.loc[:, self.pos, :] = \
             frame.ix[self.items].T.astype(self.dtype)
 
-        self.index_buf[self.pos] = tick
+        self.date_buf[self.pos] = tick
 
         self.pos += 1
 
@@ -126,7 +138,7 @@ class RollingPanel(object):
             pos = self.pos
 
         where = slice(max(pos - self.window, 0), pos)
-        major_axis = pd.DatetimeIndex(deepcopy(self.index_buf[where]),
+        major_axis = pd.DatetimeIndex(deepcopy(self.date_buf[where]),
                                       tz='utc')
 
         return pd.Panel(self.buffer.values[:, where, :], self.items,
@@ -142,5 +154,5 @@ class RollingPanel(object):
             self.buffer.values[:, -self.window:, :]
         # Clean out nans so that they get dropped in _update_buffer()
         self.buffer.values[:, -self.window:, :] = np.nan
-        self.index_buf[:self.window] = self.index_buf[-self.window:]
+        self.date_buf[:self.window] = self.date_buf[-self.window:]
         self.pos = self.window

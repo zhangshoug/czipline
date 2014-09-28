@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from itertools import groupby, product
-
 import logbook
 import numpy as np
 import pandas as pd
@@ -181,7 +180,6 @@ class HistoryContainer(object):
             # an empty regular Index if we have values.
             return pd.Index(index_values)
 
-
     @property
     def prior_values_columns(self):
         return self.sids
@@ -200,9 +198,25 @@ class HistoryContainer(object):
         """
         return iterkeys(self.frequency_groups)
 
+    def add_sids(self, to_add):
+        """
+        """
+        self.sids = self.sids + _ensure_index(to_add)
+        self.realign()
+
     def drop_sids(self, to_drop):
-        self.last_known_prior_values.drop(to_drop, axis=1)
+        """
+        """
         self.sids = self.sids - _ensure_index(to_drop)
+        self.realign()
+
+    def realign(self):
+        """
+        """
+        self.last_known_prior_values = self.last_known_prior_values.reindex(
+            self.sids,
+            axis=1,
+        )
         for panel in self.all_panels:
             panel.set_sids(self.sids)
 

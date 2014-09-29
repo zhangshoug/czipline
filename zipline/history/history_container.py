@@ -158,6 +158,13 @@ class HistoryContainer(object):
             data=None,
             index=self.prior_values_index,
             columns=self.prior_values_columns,
+            # Note: For bizarre "intricacies of the spaghetti that is pandas
+            # indexing logic" reasons, setting this dtype prevents indexing
+            # errors in update_last_known_values.  This is safe for the time
+            # being because our only forward-fillable fields are floats.  If we
+            # need to add a non-float-typed forward-fillable field, then we may
+            # find ourselves having to track down and fix a pandas bug.
+            dtype=np.float64,
         )
 
     @property
@@ -202,20 +209,19 @@ class HistoryContainer(object):
         """
         """
         self.sids = self.sids + _ensure_index(to_add)
-        self.realign()
+        self._realign()
 
     def drop_sids(self, to_drop):
         """
         """
         self.sids = self.sids - _ensure_index(to_drop)
-        self.realign()
+        self._realign()
 
-    def realign(self):
+    def _realign(self):
         """
         """
         self.last_known_prior_values = self.last_known_prior_values.reindex(
-            self.sids,
-            axis=1,
+            columns=self.sids,
         )
         for panel in self.all_panels:
             panel.set_sids(self.sids)
@@ -398,12 +404,13 @@ class HistoryContainer(object):
                     latest_minute=latest_minute,
                 )
 
-                # Create a digest from minutes_to_process and add it to
-                # digest_panel.
-                self.create_new_digest_frame(frequency,
-                                             digest_panel,
-                                             minutes_to_process,
-                                             latest_minute)
+                if digest_panel is not None:
+                    # Create a digest from minutes_to_process and add it to
+                    # digest_panel.
+                    digest_panel.add_frame(
+                        latest_minute,
+                        self.create_new_digest_frame(minutes_to_process)
+                    )
 
                 # Update panel start/close for this frequency.
                 self.cur_window_starts[frequency] = \
@@ -422,9 +429,9 @@ class HistoryContainer(object):
                 index=frame.columns,
             )
 
-        # close_price is an alias of price with different ffilling logic, so we
-        # use the same aggregator.
-        close_price_aggregator = lambda s: s.ffill().iloc[-1]
+        # close_price is an alias of price logic, so we use the same
+        # aggregator, which returns the last non-null price.
+        close_price_aggregator = lambda df: df.ffill().iloc[-1]
         aggregators = {
             # price/close reduces to the last non-null price in the period
             'price': close_price_aggregator,
@@ -432,7 +439,7 @@ class HistoryContainer(object):
             # open_price reduces to the first non-null open_price in the period
             'open_price': lambda df: df.bfill().iloc[0],
             # volume reduces to the sum of all non-null volumes in the period
-            'volume': lambda df: df.fillna(0).sum(),
+            'volume': lambda df: df.sum(),
             'high': lambda df: df.max(),
             'low': lambda df: df.min(),
         }
@@ -451,27 +458,14 @@ class HistoryContainer(object):
             index=fields,
         )
 
-    def create_new_digest_frame(self,
-                                frequency,
-                                digest_panel,
-                                buffer_minutes,
-                                digest_dt):
+    def create_new_digest_frame(self, buffer_minutes):
         """
-        Package up minutes in @buffer_minutes and insert that bar into
-        @digest_panel at index @last_minute, and update
-        self.cur_window_{starts|closes} for the given frequency.
+        Package up minutes in @buffer_minutes into a single digest frame.
         """
-        if digest_panel is None:
-            # This happens if the only spec we have at this frequency has a bar
-            # count of 1.
-            return
-
-        new_digest = self.aggregate_ohlcv_panel(
+        return self.aggregate_ohlcv_panel(
             self.fields,
             buffer_minutes,
         )
-
-        digest_panel.add_frame(digest_dt, new_digest)
 
     def update_last_known_values(self):
         """

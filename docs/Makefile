@@ -7,6 +7,12 @@ SPHINXBUILD   = sphinx-build
 PAPER         =
 BUILDDIR      = _build
 
+# hack to compute ipython notebooks to rst format
+IPYNBDIR      = notebooks
+RSTDIR 	      = _notebooks_rst
+NBCONVERT     = scripts/nbconvert_to_rst.sh
+
+
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
 $(error The '$(SPHINXBUILD)' command was not found. Make sure you have Sphinx installed, then set the SPHINXBUILD environment variable to point to the full path of the '$(SPHINXBUILD)' executable. Alternatively you can add the directory with the executable to your PATH. If you don't have Sphinx installed, grab it from http://sphinx-doc.org/)
@@ -23,6 +29,7 @@ I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
+	@echo "  rst 	    convert notebooks doc to rst files"
 	@echo "  html       to make standalone HTML files"
 	@echo "  dirhtml    to make HTML files named index.html in directories"
 	@echo "  singlehtml to make a single large HTML file"
@@ -47,14 +54,21 @@ help:
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
 
 clean:
-	rm -rf $(BUILDDIR)/*
+	rm -rf $(BUILDDIR)/* $(RSTDIR)/*
+
 
 html:
-	pandoc ../README.md -o ../README.rst
-
+        pandoc ../README.md -o ../README.rst
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
+
+## Here just to convert ipython notebook documentation to rst files.
+#
+rst:
+	$(NBCONVERT) $(IPYNBDIR) $(RSTDIR)
+	@echo
+	@echo "IPython notebook conversion finished. The rst pages are in $(RSTDIR)."
 
 dirhtml:
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml

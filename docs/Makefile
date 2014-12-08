@@ -8,9 +8,9 @@ PAPER         =
 BUILDDIR      = _build
 
 # hack to compute ipython notebooks to rst format
-IPYNBDIR      = notebooks
-RSTDIR 	      = _notebooks_rst
-NBCONVERT     = scripts/nbconvert_to_rst.sh
+IPYNBDIR      = notebooks/*.ipynb
+RSTDIR 	      = --FilesWriter.build_directory=_notebooks_rst
+NBCONVERT     = ipython nbconvert --to rst #scripts/nbconvert_to_rst.sh
 
 
 # User-friendly check for sphinx-build
@@ -58,7 +58,7 @@ clean:
 
 
 html:
-        pandoc ../README.md -o ../README.rst
+	pandoc ../README.md -o ../README.rst
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."

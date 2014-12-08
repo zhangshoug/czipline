@@ -99,7 +99,7 @@ def main():
 #    if args['--download']:
 #        text.append(download)
 
-    for icell, cell in enumerate(nb['worksheets'][0]['cells']):
+    for icell, cell in enumerate(nb['cells']):
         text.append('\n\n') # new line
 
         # code cells

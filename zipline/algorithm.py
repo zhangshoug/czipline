@@ -29,6 +29,7 @@ from six import (
     string_types,
 )
 from operator import attrgetter
+from progressbar import ProgressBar
 
 from zipline.errors import (
     OrderDuringInitialize,
@@ -77,6 +78,7 @@ from zipline.utils.events import (
     TimeRuleFactory,
 )
 from zipline.utils.factory import create_simulation_parameters
+from zipline.utils.ui import new_progress_bar
 
 import zipline.protocol
 from zipline.protocol import Event
@@ -477,8 +479,15 @@ class TradingAlgorithm(object):
             # loop through simulated_trading, each iteration returns a
             # perf dictionary
             perfs = []
+
+            pbar = new_progress_bar(maxval=1.00)
+            pbar.start()
+            cur_progress = 0.0
             for perf in self.gen:
+                cur_progress = perf.get('progress', cur_progress)
+                pbar.update(cur_progress)
                 perfs.append(perf)
+            pbar.finish()
 
             # convert perf dict to pandas dataframe
             daily_stats = self._create_daily_stats(perfs)

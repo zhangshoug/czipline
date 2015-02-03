@@ -19,3 +19,6 @@ six==1.6.1
 
 # For fetching remote data
 requests==2.5.1
+
+# For displaying progressbars on TradingAlgorithm.run.
+progressbar-ipython==2.3.1

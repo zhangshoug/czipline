@@ -1,0 +1,1 @@
+USEquities = object()

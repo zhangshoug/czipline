@@ -1,6 +1,7 @@
 """
 Class capable of yielding adjusted chunks of an ndarray.
 """
+from cpython.object cimport Py_EQ, PyObject_RichCompare
 from numpy import (
     asarray,
     float64,
@@ -65,7 +66,8 @@ cdef class Float64AdjustedArray:
         if mask is None:
             self.mask = full((data.shape[0], data.shape[1]), 1, dtype=uint8)
         else:
-            assert mask.shape == data.shape
+            # Cython...
+            assert PyObject_RichCompare(mask.shape, data.shape, Py_EQ)
             self.mask = mask
 
     cpdef traverse(self, int lookback):

@@ -114,6 +114,13 @@ class NoDataOnDate(Exception):
     pass
 
 
+def check_uint32_safe(value, colname):
+    if value >= UINT32_MAX:
+        raise ValueError(
+            "Value %s from column '%s' is too large" % (value, colname)
+        )
+
+
 class BcolzDailyBarWriter(with_metaclass(ABCMeta)):
     """
     Class capable of writing daily OHLCV data to disk in a format that can be
@@ -125,11 +132,11 @@ class BcolzDailyBarWriter(with_metaclass(ABCMeta)):
     """
 
     @abstractmethod
-    def gen_tables(self, assets):
+    def gen_tables(self, assets, calendar):
         """
         Return an iterator of pairs of (asset_id, bcolz.ctable).
         """
-        raise NotImplementedError()
+        raise NotImplementedError('get_tables')
 
     @abstractmethod
     def to_uint32(self, array, colname):
@@ -153,6 +160,13 @@ class BcolzDailyBarWriter(with_metaclass(ABCMeta)):
         """
         raise NotImplementedError()
 
+    @property
+    def progress_bar_message(self):
+        return "Merging asset files:"
+
+    def progress_bar_item_show_func(self, value):
+        return value if value is None else str(value[0])
+
     def write(self, filename, calendar, assets, show_progress=False):
         """
         Parameters
@@ -171,13 +185,13 @@ class BcolzDailyBarWriter(with_metaclass(ABCMeta)):
         table : bcolz.ctable
             The newly-written table.
         """
-        _iterator = self.gen_tables(assets)
+        _iterator = self.gen_tables(assets, calendar)
         if show_progress:
             pbar = progressbar(
                 _iterator,
                 length=len(assets),
-                item_show_func=lambda i: i if i is None else str(i[0]),
-                label="Merging asset files:",
+                item_show_func=self.progress_bar_item_show_func,
+                label=self.progress_bar_message,
             )
             with pbar as pbar_iterator:
                 return self._write_internal(filename, calendar, pbar_iterator)
@@ -206,8 +220,11 @@ class BcolzDailyBarWriter(with_metaclass(ABCMeta)):
                 if column_name == 'id':
                     # We know what the content of this column is, so don't
                     # bother reading it.
-                    columns['id'].append(full((nrows,), asset_id, uint32))
+                    columns['id'].append(
+                        full((nrows,), asset_id, dtype='uint32'),
+                    )
                     continue
+
                 columns[column_name].append(
                     self.to_uint32(table[column_name][:], column_name)
                 )
@@ -280,7 +297,7 @@ class DailyBarWriterFromCSVs(BcolzDailyBarWriter):
     def __init__(self, asset_map):
         self._asset_map = asset_map
 
-    def gen_tables(self, assets):
+    def gen_tables(self, assets, calendar):
         """
         Read CSVs as DataFrames from our asset map.
         """
@@ -295,22 +312,15 @@ class DailyBarWriterFromCSVs(BcolzDailyBarWriter):
     def to_uint32(self, array, colname):
         arrmax = array.max()
         if colname in OHLC:
-            self.check_uint_safe(arrmax * 1000, colname)
+            check_uint32_safe(arrmax * 1000, colname)
             return (array * 1000).astype(uint32)
         elif colname == 'volume':
-            self.check_uint_safe(arrmax, colname)
+            check_uint32_safe(arrmax, colname)
             return array.astype(uint32)
         elif colname == 'day':
             nanos_per_second = (1000 * 1000 * 1000)
-            self.check_uint_safe(arrmax.view(int) / nanos_per_second, colname)
+            check_uint32_safe(arrmax.view(int) / nanos_per_second, colname)
             return (array.view(int) / nanos_per_second).astype(uint32)
-
-    @staticmethod
-    def check_uint_safe(value, colname):
-        if value >= UINT32_MAX:
-            raise ValueError(
-                "Value %s from column '%s' is too large" % (value, colname)
-            )
 
 
 class BcolzDailyBarReader(object):
@@ -537,6 +547,12 @@ class SQLiteAdjustmentWriter(object):
     ----------
     conn_or_path : str or sqlite3.Connection
         A handle to the target sqlite database.
+    calendar : pd.DatetimeIndex
+        Index of dates to use as the trading calendar for aligning dividend
+        lookups.
+    daily_bar_reader : BcolzDailyBarReader
+        Daily bar reader to use for dividend writes.
+
     overwrite : bool, optional, default=False
         If True and conn_or_path is a string, remove any existing files at the
         given path before connecting.

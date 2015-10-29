@@ -27,8 +27,12 @@ from six.moves.urllib_error import HTTPError
 from . benchmarks import get_benchmark_returns
 from . import treasuries, treasuries_can
 from .paths import (
-    cache_root,
-    data_root,
+    cache_path,
+    data_path,
+    ensure_data_root,
+    ensure_cache_root,
+    last_modified_time,
+    modified_since,
 )
 
 from zipline.utils.tradingcalendar import (
@@ -51,33 +55,24 @@ INDEX_MAPPING = {
 ONE_HOUR = pd.Timedelta(hours=1)
 
 
-def last_modified_time(path):
-    """
-    Get the last modified time of path as a Timestamp.
-    """
-    return pd.Timestamp(os.path.getmtime(path), unit='s', tz='UTC')
-
-
 def get_data_filepath(name):
     """
     Returns a handle to data file.
 
     Creates containing directory, if needed.
     """
-    dr = data_root()
-
-    if not os.path.exists(dr):
-        os.makedirs(dr)
-
-    return os.path.join(dr, name)
+    ensure_data_root()
+    return data_path(name)
 
 
 def get_cache_filepath(name):
-    cr = cache_root()
-    if not os.path.exists(cr):
-        os.makedirs(cr)
+    """
+    Returns a handle to cache file.
 
-    return os.path.join(cr, name)
+    Creates containing directory, if needed.
+    """
+    ensure_cache_root()
+    return cache_path(name)
 
 
 def get_benchmark_filename(symbol):
@@ -231,6 +226,7 @@ def ensure_benchmark_data(symbol, first_date, last_date, now, trading_day):
                     path=path, error=e,
                 )
             )
+
     logger.info(
         "Cache at {path} does not have data from {start} to {end}.\n"
         "Downloading benchmark data for '{symbol}'.",
@@ -376,88 +372,6 @@ must specify stocks or indexes"""
             data[name] = stkd
 
     return data
-
-
-def load_from_yahoo(indexes=None,
-                    stocks=None,
-                    start=None,
-                    end=None,
-                    adjusted=True):
-    """
-    Loads price data from Yahoo into a dataframe for each of the indicated
-    assets.  By default, 'price' is taken from Yahoo's 'Adjusted Close',
-    which removes the impact of splits and dividends. If the argument
-    'adjusted' is False, then the non-adjusted 'close' field is used instead.
-
-    :param indexes: Financial indexes to load.
-    :type indexes: dict
-    :param stocks: Stock closing prices to load.
-    :type stocks: list
-    :param start: Retrieve prices from start date on.
-    :type start: datetime
-    :param end: Retrieve prices until end date.
-    :type end: datetime
-    :param adjusted: Adjust the price for splits and dividends.
-    :type adjusted: bool
-
-    """
-    data = _load_raw_yahoo_data(indexes, stocks, start, end)
-    if adjusted:
-        close_key = 'Adj Close'
-    else:
-        close_key = 'Close'
-    df = pd.DataFrame({key: d[close_key] for key, d in iteritems(data)})
-    df.index = df.index.tz_localize(pytz.utc)
-    return df
-
-
-def load_bars_from_yahoo(indexes=None,
-                         stocks=None,
-                         start=None,
-                         end=None,
-                         adjusted=True):
-    """
-    Loads data from Yahoo into a panel with the following
-    column names for each indicated security:
-
-        - open
-        - high
-        - low
-        - close
-        - volume
-        - price
-
-    Note that 'price' is Yahoo's 'Adjusted Close', which removes the
-    impact of splits and dividends. If the argument 'adjusted' is True, then
-    the open, high, low, and close values are adjusted as well.
-
-    :param indexes: Financial indexes to load.
-    :type indexes: dict
-    :param stocks: Stock closing prices to load.
-    :type stocks: list
-    :param start: Retrieve prices from start date on.
-    :type start: datetime
-    :param end: Retrieve prices until end date.
-    :type end: datetime
-    :param adjusted: Adjust open/high/low/close for splits and dividends.
-        The 'price' field is always adjusted.
-    :type adjusted: bool
-
-    """
-    data = _load_raw_yahoo_data(indexes, stocks, start, end)
-    panel = pd.Panel(data)
-    # Rename columns
-    panel.minor_axis = ['open', 'high', 'low', 'close', 'volume', 'price']
-    panel.major_axis = panel.major_axis.tz_localize(pytz.utc)
-    # Adjust data
-    if adjusted:
-        adj_cols = ['open', 'high', 'low', 'close']
-        for ticker in panel.items:
-            ratio = (panel[ticker]['price'] / panel[ticker]['close'])
-            ratio_filtered = ratio.fillna(0).values
-            for col in adj_cols:
-                panel[ticker][col] *= ratio_filtered
-    return panel
 
 
 def load_prices_from_csv(filepath, identifier_col, tz='UTC'):

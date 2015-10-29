@@ -220,24 +220,14 @@ class SyntheticDailyBarWriter(BcolzDailyBarWriter):
     ----------
     asset_info : DataFrame
         DataFrame with asset_id as index and 'start_date'/'end_date' columns.
-    calendar : DatetimeIndex
-        Calendar to use for constructing asset lifetimes.
     """
     OHLCV = ('open', 'high', 'low', 'close', 'volume')
     OHLC = ('open', 'high', 'low', 'close')
     PSEUDO_EPOCH = Timestamp('2000-01-01', tz='UTC')
 
-    def __init__(self, asset_info, calendar):
+    def __init__(self, asset_info):
         super(SyntheticDailyBarWriter, self).__init__()
-        assert (
-            # Using .value here to avoid having to care about UTC-aware dates.
-            self.PSEUDO_EPOCH.value <
-            calendar.min().value <=
-            asset_info['start_date'].min().value
-        )
-        assert (asset_info['start_date'] < asset_info['end_date']).all()
         self._asset_info = asset_info
-        self._calendar = calendar
 
     def _raw_data_for_asset(self, asset_id):
         """
@@ -330,7 +320,16 @@ class SyntheticDailyBarWriter(BcolzDailyBarWriter):
         return data
 
     # BEGIN SUPERCLASS INTERFACE
-    def gen_tables(self, assets):
+    def gen_tables(self, assets, calendar):
+        asset_info = self._asset_info
+        assert (
+            # Using .value here to avoid having to care about UTC-aware dates.
+            self.PSEUDO_EPOCH.value <
+            calendar.min().value <=
+            asset_info['start_date'].min().value
+        )
+        assert (asset_info['start_date'] < asset_info['end_date']).all()
+
         for asset in assets:
             yield asset, self._raw_data_for_asset(asset)
 

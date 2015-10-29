@@ -1,6 +1,8 @@
 from contextlib import contextmanager
 from functools import wraps
 from inspect import getargspec
+import gzip
+
 from itertools import (
     combinations,
     count,
@@ -8,6 +10,7 @@ from itertools import (
 )
 import operator
 import os
+from os.path import abspath, dirname, join, realpath
 import shutil
 from string import ascii_uppercase
 import tempfile
@@ -881,3 +884,56 @@ def parameter_space(**params):
         param_sets = product(*(params[name] for name in argnames))
         return subtest(param_sets, *argnames)(f)
     return decorator
+
+
+def write_compressed(path, content):
+    """
+    Write a compressed (gzipped) file to `path`.
+    """
+    with gzip.open(path, 'wb') as f:
+        f.write(content)
+
+
+def read_compressed(path):
+    """
+    Write a compressed (gzipped) file from `path`.
+    """
+    with gzip.open(path, 'rb') as f:
+        return f.read()
+
+
+zipline_git_root = abspath(
+    join(realpath(dirname(__file__)), '..', '..'),
+)
+
+
+def test_resource_path(*path_parts):
+    return os.path.join(zipline_git_root, 'tests', 'resources', *path_parts)
+
+
+@contextmanager
+def patch_os_environment(remove=None, **values):
+    """
+    Context manager for patching the operating system environment.
+    """
+    old_values = {}
+    remove = remove or []
+    for key in remove:
+        old_values[key] = os.environ.pop(key)
+    for key, value in values.iteritems():
+        old_values[key] = os.getenv(key)
+        os.environ[key] = value
+    try:
+        yield
+    finally:
+        for old_key, old_value in old_values.iteritems():
+            if old_value is None:
+                # Value was not present when we entered, so del it out if it's
+                # still present.
+                try:
+                    del os.environ[key]
+                except KeyError:
+                    pass
+            else:
+                # Restore the old value.
+                os.environ[old_key] = old_value

@@ -818,10 +818,9 @@ class DataPortal(object):
         # of when the asset started trading and regardless of half days.
         # for a half day, the second half is filled with zeroes.
 
-        # find the position of start_dt in the entire timeline, go back
-        # bar_count bars, and that's the unadjusted data
         raw_data = self._equity_minute_reader._open_minute_file(field, asset)
 
+        # find positions for first and last minutes
         start_idx = max(
             self._equity_minute_reader._find_position_of_minute(
                 minutes_for_window[0]),

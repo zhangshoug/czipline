@@ -22,6 +22,7 @@ import os
 from bcolz import ctable
 from datetime import datetime
 import numpy as np
+from functools32 import lru_cache
 from numpy import float64
 from os.path import join
 import pandas as pd
@@ -266,6 +267,7 @@ class BcolzMinuteBarReader(object):
 
         return bcolz.open(path, mode='r')
 
+    @lru_cache(maxsize=512)
     def _find_position_of_minute(self, minute_dt):
         """
         Internal method that returns the position of the given minute in the

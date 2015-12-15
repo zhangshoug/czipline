@@ -677,6 +677,11 @@ class HistoryTestCase(TestCase):
             self.assertEqual(really_no_ffill_window.iloc[idx1].loc[4], val)
             self.assertTrue(np.isnan(really_no_ffill_window.iloc[idx2].loc[4]))
 
+    def test_minute_forward_fill_beginning(self):
+        # tests whether we correctly forward fill if the first minute of a
+        # history window is missing.  also verifies that any adjustments are
+        # correctly applied.
+
     def test_daily_functionality(self):
         # 9 daily bars
         # 2014-03-10,183999.0,186400.0,183601.0,186400.0,400

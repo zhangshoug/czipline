@@ -240,7 +240,7 @@ class HistoryTestCase(TestCase):
             cls.AAPL: join(TEST_MINUTE_RESOURCE_PATH, 'AAPL_minute.csv.gz'),
             cls.MSFT: join(TEST_MINUTE_RESOURCE_PATH, 'MSFT_minute.csv.gz'),
             cls.DELL: join(TEST_MINUTE_RESOURCE_PATH, 'DELL_minute.csv.gz'),
-            cls.TSLA: join(TEST_MINUTE_RESOURCE_PATH, "TSLA_minute.csv.gz"),
+            cls.TSLA: join(TEST_MINUTE_RESOURCE_PATH, "TSLA_minute.csv"),
             cls.BRKA: join(TEST_MINUTE_RESOURCE_PATH, "BRKA_minute.csv.gz"),
             cls.IBM: join(TEST_MINUTE_RESOURCE_PATH, "IBM_minute.csv.gz"),
             cls.GS:
@@ -681,6 +681,20 @@ class HistoryTestCase(TestCase):
         # tests whether we correctly forward fill if the first minute of a
         # history window is missing.  also verifies that any adjustments are
         # correctly applied.
+
+        # our TSLA data is missing the first five minutes of 2002-01-04
+        data = self.get_portal().get_history_window(
+            [4],
+            pd.Timestamp("2002-01-04 14:42:00", tz='UTC'),
+            10,
+            "1m",
+            "price"
+        )
+
+        # first three minutes should be forward-filled from the previous day's
+        # close
+        for i in range(0, 2):
+            self.assertEqual(127.85, data[self.TSLA].iloc[i])
 
     def test_daily_functionality(self):
         # 9 daily bars

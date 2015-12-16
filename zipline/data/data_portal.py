@@ -415,6 +415,26 @@ class DataPortal(object):
             except KeyError:
                 return None
 
+    def _get_last_trade(self, asset, carray, start_dt, start_offset):
+        start_date = self._get_asset_start_date(asset)
+        start_date_idx = self._equity_minute_reader.trading_days.\
+                searchsorted(start_date)
+        start_day_offset = start_date_idx * 390
+
+        original_start = start_offset
+
+        while result == 0 and start_offset > start_day_offset:
+            start_offset -= 1
+            result = carray[start_offset]
+
+        new_minutes = self.env.market_minute_window(
+            start=start_dt,
+            count=(original_start - start_offset + 1),
+            step=-1
+        ).order()
+
+        return result, new_minutes[0]
+
     def _get_minute_spot_value(self, asset, column, dt):
         # if dt is before the first market minute, minute_index
         # will be 0.  if it's after the last market minute, it'll

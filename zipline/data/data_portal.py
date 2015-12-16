@@ -415,25 +415,44 @@ class DataPortal(object):
             except KeyError:
                 return None
 
-    def _get_last_trade(self, asset, carray, start_dt, start_offset):
+    def _get_last_trade_date(self, asset, dt):
+        """
+        Internal method that returns the date of the last trade before
+        the given date for the given asset.
+        """
         start_date = self._get_asset_start_date(asset)
-        start_date_idx = self._equity_minute_reader.trading_days.\
-                searchsorted(start_date)
-        start_day_offset = start_date_idx * 390
 
-        original_start = start_offset
+        # this is the offset representing the date where the asset
+        # started trading. this is the lower bound of our search space.
+        start_day_offset = self._day_offsets[start_date]
 
-        while result == 0 and start_offset > start_day_offset:
-            start_offset -= 1
-            result = carray[start_offset]
+        # get the offset of the given dt, which is the upper bound of our
+        # search space.
+        upper_offset = self._minute_offset(dt)
 
+        # naive implementation for now.  start at (upper_offset - 1) and
+        # search backwards.
+        carray = self._open_minute_file("volume", asset)
+
+        target_offset = upper_offset - 1
+        result = carray[target_offset]
+
+        while result == 0 and target_offset > start_day_offset:
+            target_offset -= 1
+            result = carray[target_offset]
+
+        if result == 0:
+            # no trades found
+            return None
+
+        # get the minute
         new_minutes = self.env.market_minute_window(
-            start=start_dt,
-            count=(original_start - start_offset + 1),
+            start=dt,
+            count=(upper_offset - target_offset + 1),
             step=-1
         ).order()
 
-        return result, new_minutes[0]
+        return new_minutes[0]
 
     def _get_minute_spot_value(self, asset, column, dt):
         # if dt is before the first market minute, minute_index

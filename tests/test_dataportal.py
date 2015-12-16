@@ -7,6 +7,8 @@ import pandas as pd
 from unittest import TestCase
 from pandas.tslib import normalize_date
 from testfixtures import TempDirectory
+
+from zipline import TradingAlgorithm
 from zipline.data.data_portal import DataPortal
 from zipline.data.us_equity_pricing import SQLiteAdjustmentWriter, \
     SQLiteAdjustmentReader
@@ -17,6 +19,7 @@ from zipline.data.us_equity_minutes import (
     BcolzMinuteBarReader
 )
 from zipline.data.future_pricing import FutureMinuteReader
+from zipline.utils import factory
 from .utils.daily_bar_writer import DailyBarWriterFromDataFrames
 
 
@@ -195,9 +198,9 @@ class TestDataPortal(TestCase):
                 "minute": minutes
             })
 
-            MinuteBarWriterFromDataFrames(
-                pd.Timestamp('2002-01-02', tz='UTC')).write(
-                    tempdir.path, {0: df})
+            MinuteBarWriterFromDataFrames(start_day).write(
+                tempdir.path, {0: df}
+            )
 
             sim_params = SimulationParameters(
                 period_start=minutes[0],
@@ -374,5 +377,87 @@ class TestDataPortal(TestCase):
                                  dp.get_spot_value(
                                      future123, "volume", dt, data_frequency))
 
+        finally:
+            tempdir.cleanup()
+
+    def test_asdf(self):
+        tempdir = TempDirectory()
+        try:
+            # sim_params = factory.create_simulation_parameters(
+            #     data_frequency="minute"
+            # )
+            #
+            # env = TradingEnvironment()
+            #
+            # algo = TradingAlgorithm(
+            #     initialize=lambda context: None,
+            #     handle_data=lambda context, data: None,
+            #     sim_params=sim_params,
+            # )
+            #
+            # MinuteBarWriterFromDataFrames(sim_params.period_start).\
+            #     write(tempdir.path, {})
+            #
+            # algo.data_portal = DataPortal(
+            #     env,
+            #     equity_minute_reader=BcolzMinuteBarReader(tempdir.path)
+            # )
+            #
+            # algo._create_clock()
+            #
+            # import pdb; pdb.set_trace()
+            # a = 5
+            #
+            start_day = pd.Timestamp("2013-06-21", tz='UTC')
+            end_day = pd.Timestamp("2013-06-24", tz='UTC')
+
+            env = TradingEnvironment()
+            env.write_data(
+                equities_data={
+                    0: {
+                        'start_date': start_day,
+                        'end_date': env.next_trading_day(end_day)
+                    }
+                }
+            )
+
+            minutes = env.minutes_for_days_in_range(
+                start=start_day,
+                end=end_day
+            )
+
+            df = pd.DataFrame({
+                # 390 bars of real data, then 100 missing bars, then 290
+                # bars of data again
+                "open": np.array(list(range(0, 390)) + [0] * 100 +
+                                 list(range(390, 680))) * 1000,
+                "high": np.array(list(range(1000, 1390)) + [0] * 100 +
+                                 list(range(1390, 1680))) * 1000,
+                "low": np.array(list(range(2000, 2390)) + [0] * 100 +
+                                list(range(2390, 2680))) * 1000,
+                "close": np.array(list(range(3000, 3390)) + [0] * 100 +
+                                  list(range(3390, 3680))) * 1000,
+                "volume": np.array(list(range(4000, 4390)) + [0] * 100 +
+                                   list(range(4390, 4680))),
+                "minute": minutes
+            })
+
+            MinuteBarWriterFromDataFrames(start_day).write(
+                tempdir.path, {0: df}
+            )
+
+            sim_params = SimulationParameters(
+                period_start=minutes[0],
+                period_end=minutes[-1],
+                data_frequency="minute",
+                env=env
+            )
+
+            equity_minute_reader = BcolzMinuteBarReader(tempdir.path)
+
+            dp = DataPortal(
+                env,
+                equity_minute_reader=equity_minute_reader
+            )
         finally:
             tempdir.cleanup()

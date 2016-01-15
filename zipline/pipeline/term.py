@@ -379,11 +379,11 @@ class CompositeTerm(Term):
         """
         Whether or not this term represents a trailing window computation.
 
-        If term.windowed is truthy, its compute_from_windows method will be
-        called with instances of AdjustedArray as inputs.
+        If term.windowed is truthy, its _compute method will be called with
+        instances of AdjustedArray as inputs.
 
-        If term.windowed is falsey, its compute_from_baseline will be called
-        with instances of np.ndarray as inputs.
+        If term.windowed is falsey, its _compute method will be called with
+        instances of np.ndarray as inputs.
         """
         return (
             self.window_length is not NotSpecified

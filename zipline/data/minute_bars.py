@@ -561,11 +561,58 @@ class BcolzMinuteBarReader(object):
             value *= self._ohlc_inverse
         return value
 
-    def get_last_traded_dt(self, asset, dt):
-        minute_pos = self._find_last_traded_position(asset, dt)
-        if minute_pos == -1:
-            return pd.NaT
-        return self._minute_index[minute_pos]
+    def get_last_value(self, sid, dt, field):
+        """
+        Retrieve the pricing info for the given sid, dt, and field.
+
+        Parameters:
+        -----------
+        sid : int
+            Asset identifier.
+        dt : datetime-like
+            The datetime at which the trade occurred.
+        field : string
+            The type of pricing data to retrieve.
+            ('open', 'high', 'low', 'close', 'volume')
+
+        Returns:
+        --------
+        out : float|int
+
+        The market data for the given sid, dt, and field coordinates.
+
+        For OHLC:
+            Returns a float if a trade occurred at the given dt.
+            If no trade occurred, a np.nan is returned.
+
+        For volume:
+            Returns the integer value of the volume.
+            (A volume of 0 signifies no trades for the given dt.)
+        """
+        minute_pos = self._find_position_of_minute(dt)
+        col = self._open_minute_file(field, sid)
+        value = col[minute_pos]
+        if value != 0:
+            if field == 'volume':
+                return dt, value
+            else:
+                return dt, value * self._ohlc_inverse
+        else:
+            while True:
+                if minute_pos == 1:
+                    return pd.NaT, np.nan
+                chunksize = 780
+                start = max(0, minute_pos - chunksize)
+                candidates = col[start:minute_pos]
+                for i in xrange(len(candidates) - 1, 0, -1):
+                    minute_pos -= 1
+                    value = candidates[i]
+                    if value != 0:
+                        if field == 'volume':
+                            return self._minute_index[minute_pos], value
+                        else:
+                            return self._minute_index[minute_pos], \
+                                value * self._ohlc_inverse
 
     def _find_last_traded_position(self, asset, dt):
         volumes = self._open_minute_file('volume', asset)

@@ -429,7 +429,7 @@ class DataPortal(object):
             return result
 
     def _get_minute_spot_value(self, asset, column, dt):
-        result = self._equity_minute_reader.get_value(
+        last_traded_dt, result = self._equity_minute_reader.get_last_value(
             asset.sid,
             dt,
             column
@@ -437,11 +437,6 @@ class DataPortal(object):
 
         if result > 0 or column == "volume":
             return result
-
-        # didn't find a trade on this dt, so have to go find the last traded
-        # dt
-        last_traded_dt = \
-            self._equity_minute_reader.get_last_traded_dt(asset, dt)
 
         if last_traded_dt is pd.NaT:
             # no last traded dt, bail

@@ -20,6 +20,7 @@ from os.path import join
 import json
 import os
 import pandas as pd
+import numpy as np
 from pandas.core.datetools import normalize_date
 
 US_EQUITIES_MINUTES_PER_DAY = 390
@@ -470,6 +471,44 @@ class BcolzMinuteBarWriter(object):
         table.flush()
 
 
+class Block(object):
+
+    def __init__(self, array, start, end):
+        self.array = array
+        self.start = start
+        self.end = end
+
+    def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            idx = slice(idx.start - self.start, idx.stop - self.start)
+        else:
+            idx = idx - self.start
+        return self.array[idx]
+
+
+class ColWrapper(object):
+
+    def __init__(self, carray):
+        self.carray = carray
+        self._block = None
+
+    def __getitem__(self, idx):
+        if self._block is not None:
+            if self._block.start < idx < self._block.end:
+                return self._block[idx]
+
+        if isinstance(idx, slice):
+            start = max(idx.start - 390, 0)
+            end = min(idx.stop + 390, len(self.carray))
+        else:
+            start = max(idx - 390, 0)
+            end = min(idx + 390 ,len(self.carray))
+
+        self._block = Block(self.carray[start:end], start, end)
+        return self._block[idx]
+        
+
+
 class BcolzMinuteBarReader(object):
 
     def __init__(self, rootdir):
@@ -488,6 +527,7 @@ class BcolzMinuteBarReader(object):
 
         self._first_trading_day = metadata.first_trading_day
         self._minute_index = metadata.minute_index
+        self._minute_index_values = self._minute_index.asi8
         self._ohlc_inverse = 1.0 / metadata.ohlc_ratio
 
         self._carrays = {
@@ -517,8 +557,9 @@ class BcolzMinuteBarReader(object):
             carray = self._carrays[field][sid]
         except KeyError:
             carray = self._carrays[field][sid] = \
-                bcolz.carray(rootdir=self._get_carray_path(sid, field),
-                             mode='r')
+                ColWrapper(
+                    bcolz.carray(rootdir=self._get_carray_path(sid, field),
+                                 mode='r'))
 
         return carray
 
@@ -651,7 +692,7 @@ class BcolzMinuteBarReader(object):
         since market open on the first trading day.
         """
         try:
-            return self._minute_index.get_loc(minute_dt)
+            return np.searchsorted(self._minute_index_values, minute_dt.value)
         except KeyError:
             pos = self._minute_index.searchsorted(minute_dt) - 1
             if pos < 0:

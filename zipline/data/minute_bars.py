@@ -477,6 +477,7 @@ class BcolzMinuteBarWriter(object):
 from _minute_bars import Block
 from _minute_bars import get_last_value as _get_last_value
 
+
 class ColWrapper(object):
 
     def __init__(self, carray):
@@ -489,8 +490,8 @@ class ColWrapper(object):
                (self._block.end > slice_.stop):
                 return self._block[slice_]
 
-        start = max(idx.start - 3900, 0)
-        end = min(idx.stop + 3900, len(self.carray))
+        start = max(slice_.start - 3900, 0)
+        end = min(slice_.stop + 3900, len(self.carray))
 
         self._block = Block(self.carray[start:end], start, end)
         return self._block[idx]

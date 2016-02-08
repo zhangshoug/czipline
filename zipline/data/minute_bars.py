@@ -21,6 +21,7 @@ import json
 import os
 import pandas as pd
 import numpy as np
+from bisect import bisect_right
 from pandas.core.datetools import normalize_date
 
 US_EQUITIES_MINUTES_PER_DAY = 390
@@ -471,20 +472,7 @@ class BcolzMinuteBarWriter(object):
         table.flush()
 
 
-class Block(object):
-
-    def __init__(self, array, start, end):
-        self.array = array
-        self.start = start
-        self.end = end
-
-    def __getitem__(self, idx):
-        if isinstance(idx, slice):
-            idx = slice(idx.start - self.start, idx.stop - self.start)
-        else:
-            idx = idx - self.start
-        return self.array[idx]
-
+from _minute_bars import Block
 
 class ColWrapper(object):
 
@@ -552,7 +540,6 @@ class BcolzMinuteBarReader(object):
 
     def _open_minute_file(self, field, sid):
         sid = int(sid)
-
         try:
             carray = self._carrays[field][sid]
         except KeyError:
@@ -592,7 +579,11 @@ class BcolzMinuteBarReader(object):
             (A volume of 0 signifies no trades for the given dt.)
         """
         minute_pos = self._find_position_of_minute(dt)
-        value = self._open_minute_file(field, sid)[minute_pos]
+        try:
+            col = self._carrays[field][sid]
+        except KeyError:
+            col = self._open_minute_file(field, sid)
+        value = col[minute_pos]
         if value == 0:
             if field == 'volume':
                 return 0
@@ -691,12 +682,8 @@ class BcolzMinuteBarReader(object):
         The position of the given minute in the list of all trading minutes
         since market open on the first trading day.
         """
-        try:
-            return np.searchsorted(self._minute_index_values, minute_dt.value)
-        except KeyError:
-            pos = self._minute_index.searchsorted(minute_dt) - 1
-            if pos < 0:
-                raise
-
-            return pos
-
+        return 1
+        pos = bisect_right(self._minute_index_values, minute_dt.value) - 1
+        if pos < 0:
+            raise KeyError
+        return pos

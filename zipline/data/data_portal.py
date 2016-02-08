@@ -299,9 +299,6 @@ class DataPortal(object):
 
         column_to_use = BASE_FIELDS[field]
 
-        if isinstance(asset, int):
-            asset = self._asset_finder.retrieve_asset(asset)
-
         # FIXME: This try/except should be removed when assets are correctly
         # removed from portfolio.
         try:
@@ -1165,23 +1162,18 @@ class DataPortal(object):
         return adjustments
 
     def _check_is_currently_alive(self, asset, dt):
-        sid = int(asset)
-
-        if sid not in self._asset_start_dates:
-            self._get_asset_start_date(asset)
-
-        start_date = self._asset_start_dates[sid]
-        if self._asset_start_dates[sid] > dt:
+        start_date = asset.start_date
+        if start_date > dt:
             raise NoTradeDataAvailableTooEarly(
-                sid=sid,
+                sid=asset,
                 dt=normalize_date(dt),
                 start_dt=start_date
             )
 
-        end_date = self._asset_end_dates[sid]
-        if self._asset_end_dates[sid] < dt:
+        end_date = asset.end_date
+        if end_date < dt:
             raise NoTradeDataAvailableTooLate(
-                sid=sid,
+                sid=asset,
                 dt=normalize_date(dt),
                 end_dt=end_date
             )

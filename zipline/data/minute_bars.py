@@ -474,44 +474,8 @@ class BcolzMinuteBarWriter(object):
         table.flush()
 
 
-from _minute_bars import Block
+from _minute_bars import ColWrapper
 from _minute_bars import get_last_value as _get_last_value
-
-
-class ColWrapper(object):
-
-    def __init__(self, carray):
-        self.carray = carray
-        self._block = None
-
-    def _getitem_slice(self, slice_):
-        if self._block is not None:
-            if (self._block.start < slice_.start) and \
-               (self._block.end > slice_.stop):
-                return self._block[slice_]
-
-        start = max(slice_.start - 3900, 0)
-        end = min(slice_.stop + 3900, len(self.carray))
-
-        self._block = Block(self.carray[start:end], start, end)
-        return self._block[idx]
-
-    def _getitem_idx(self, idx):
-        if self._block is not None:
-            if self._block.start < idx < self._block.end:
-                return self._block[idx]
-
-        start = max(idx - 3900, 0)
-        end = min(idx + 3900, len(self.carray))
-
-        self._block = Block(self.carray[start:end], start, end)
-        return self._block[idx]
-
-    def __getitem__(self, idx):
-        if isinstance(idx, slice):
-            return self._getitem_slice(idx)
-        else:
-            return self._getitem_idx(idx)
 
 
 class BcolzMinuteBarReader(object):
@@ -605,7 +569,7 @@ class BcolzMinuteBarReader(object):
             col = self._carrays[field][sid]
         except KeyError:
             col = self._open_minute_file(field, sid)
-        value = col[minute_pos]
+        value = col.get_idx(minute_pos)
         if value == 0:
             if field == 'volume':
                 return 0

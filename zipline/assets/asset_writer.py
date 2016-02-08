@@ -32,8 +32,7 @@ from zipline.assets.asset_db_schema import (
     asset_db_table_names,
     ASSET_DB_VERSION,
 )
-
-SQLITE_MAX_VARIABLE_NUMBER = 999
+from zipline.utils.sqlite_utils import SQLITE_MAX_VARIABLE_NUMBER
 
 # Define a namedtuple for use with the load_data and _load_data methods
 AssetData = namedtuple('AssetData', 'equities futures exchanges root_symbols')

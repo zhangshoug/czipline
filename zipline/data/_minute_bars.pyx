@@ -28,10 +28,9 @@ cdef class Block:
         else:
             return self.array[idx - self.start]
 
-
 @cython.boundscheck(False)
 cpdef get_last_value(reader, sid, dt, field):
-    cdef intp_t minute_pos, initial_minute_pos, last_idx, last_checked
+    cdef intp_t minute_pos, initial_minute_pos, last_idx, last_checked, i
     cdef uint32_t value
     minute_pos = reader._find_position_of_minute(dt)
     col = reader._open_minute_file(field, sid)
@@ -43,10 +42,9 @@ cpdef get_last_value(reader, sid, dt, field):
             return dt, value * reader._ohlc_inverse
     else:
         try:
-            last_idx, last_checked = reader._last_traded_cache[sid]
+            last_idx, value, last_checked = reader._last_traded_cache[sid]
             if minute_pos - last_checked <= 1:
-                reader._last_traded_cache[sid] = (last_idx, minute_pos)
-                value = col[last_idx]
+                reader._last_traded_cache[sid] = (last_idx, value, minute_pos)
                 if field == 'volume':
                     return reader._minute_index[last_idx], value
                 else:
@@ -68,7 +66,8 @@ cpdef get_last_value(reader, sid, dt, field):
                 value = candidates[i]
                 if value != 0:
                     reader._last_traded_cache[sid] = (minute_pos,
-                                                    initial_minute_pos)
+                                                      value,
+                                                      initial_minute_pos)
                     if field == 'volume':
                         return reader._minute_index[minute_pos], value
                     else:

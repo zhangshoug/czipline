@@ -11,7 +11,7 @@ cdef class Block:
     # Not available in Python-space:
     cdef public intp_t start, end
     # Available in Python-space:
-    cdef uint32_t[:] array
+    cdef public uint32_t[:] array
 
     def __init__(self, array, start, end):
         self.array = array
@@ -20,7 +20,6 @@ cdef class Block:
 
     def __getitem__(self, idx):
         if isinstance(idx, slice):
-            idx = slice(idx.start - self.start, idx.stop - self.start)
+            return self.array[idx.start - self.start:idx.stop - self.start]
         else:
-            idx = idx - self.start
-        return self.array[idx]
+            return self.array[idx - self.start]

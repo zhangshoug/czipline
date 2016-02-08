@@ -24,6 +24,8 @@ import numpy as np
 from bisect import bisect_right
 from pandas.core.datetools import normalize_date
 
+from zipline.utils.memoize import remember_last
+
 US_EQUITIES_MINUTES_PER_DAY = 390
 
 DEFAULT_EXPECTEDLEN = US_EQUITIES_MINUTES_PER_DAY * 252 * 15
@@ -480,21 +482,34 @@ class ColWrapper(object):
         self.carray = carray
         self._block = None
 
-    def __getitem__(self, idx):
+    def _getitem_slice(self, slice_):
+        if self._block is not None:
+            if (self._block.start < slice_.start) and \
+               (self._block.end > slice_.stop):
+                return self._block[slice_]
+
+        start = max(idx.start - 3900, 0)
+        end = min(idx.stop + 3900, len(self.carray))
+
+        self._block = Block(self.carray[start:end], start, end)
+        return self._block[idx]
+
+    def _getitem_idx(self, idx):
         if self._block is not None:
             if self._block.start < idx < self._block.end:
                 return self._block[idx]
 
-        if isinstance(idx, slice):
-            start = max(idx.start - 390, 0)
-            end = min(idx.stop + 390, len(self.carray))
-        else:
-            start = max(idx - 390, 0)
-            end = min(idx + 390 ,len(self.carray))
+        start = max(idx - 3900, 0)
+        end = min(idx + 3900, len(self.carray))
 
         self._block = Block(self.carray[start:end], start, end)
         return self._block[idx]
-        
+
+    def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            return self._getitem_slice(idx)
+        else:
+            return self._getitem_idx(idx)
 
 
 class BcolzMinuteBarReader(object):
@@ -661,6 +676,7 @@ class BcolzMinuteBarReader(object):
                 return minute_pos
             minute_pos -= 1
 
+    @remember_last
     def _find_position_of_minute(self, minute_dt):
         """
         Internal method that returns the position of the given minute in the
@@ -682,7 +698,6 @@ class BcolzMinuteBarReader(object):
         The position of the given minute in the list of all trading minutes
         since market open on the first trading day.
         """
-        return 1
         pos = bisect_right(self._minute_index_values, minute_dt.value) - 1
         if pos < 0:
             raise KeyError

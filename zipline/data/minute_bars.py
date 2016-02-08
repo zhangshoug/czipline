@@ -614,6 +614,15 @@ class BcolzMinuteBarReader(object):
             value *= self._ohlc_inverse
         return value
 
+    def get_exact_value(self, sid, dt, field):
+        minute_pos = reader._find_position_of_minute(dt)
+        col = reader._open_minute_file(field, sid)
+        value = col[minute_pos]
+        if field == 'volume':
+            return value
+        else:
+            return value * reader._ohlc_inverse
+
     def get_last_value(self, sid, dt, field):
         """
         Retrieve the pricing info for the given sid, dt, and field.

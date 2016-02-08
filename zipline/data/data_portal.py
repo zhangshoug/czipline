@@ -285,16 +285,16 @@ class DataPortal(object):
         -------
         The value of the desired field at the desired time.
         """
-        extra_source_val = self._check_extra_sources(
-            asset,
-            field,
-            dt,
-        )
-
-        if extra_source_val is not None:
-            return extra_source_val
-
         if field not in BASE_FIELDS:
+            extra_source_val = self._check_extra_sources(
+                asset,
+                field,
+                dt,
+            )
+
+            if extra_source_val is not None:
+                return extra_source_val
+
             raise KeyError("Invalid column: " + str(field))
 
         column_to_use = BASE_FIELDS[field]
@@ -429,6 +429,13 @@ class DataPortal(object):
             return result
 
     def _get_minute_spot_value(self, asset, column, dt):
+        if column == 'volume':
+            return self._equity_minute_reader.get_value(
+                asset,
+                dt,
+                column
+            )
+
         last_traded_dt, result = self._equity_minute_reader.get_last_value(
             asset.sid,
             dt,

@@ -100,6 +100,8 @@ class VolumeShareSlippage(SlippageModel):
     def process_order(self, trade_bar, order):
 
         volume = trade_bar.volume
+        if volume == 0:
+            return
         max_volume = self.volume_limit * volume
 
         # price impact accounts for the total volume of transactions

@@ -475,6 +475,7 @@ class BcolzMinuteBarWriter(object):
 
 
 from _minute_bars import Block
+from _minute_bars import get_last_value as _get_last_value
 
 class ColWrapper(object):
 
@@ -540,6 +541,11 @@ class BcolzMinuteBarReader(object):
             'close': {},
             'volume': {},
         }
+
+        self._last_traded_cache = {}
+
+        self._last_seen_minute_value = None
+        self._last_seen_minute_pos = None
 
     def _get_metadata(self):
         return BcolzMinuteBarMetadata.read(self._rootdir)
@@ -636,30 +642,7 @@ class BcolzMinuteBarReader(object):
             Returns the integer value of the volume.
             (A volume of 0 signifies no trades for the given dt.)
         """
-        minute_pos = self._find_position_of_minute(dt)
-        col = self._open_minute_file(field, sid)
-        value = col[minute_pos]
-        if value != 0:
-            if field == 'volume':
-                return dt, value
-            else:
-                return dt, value * self._ohlc_inverse
-        else:
-            while True:
-                if minute_pos == 1:
-                    return pd.NaT, np.nan
-                chunksize = 780
-                start = max(0, minute_pos - chunksize)
-                candidates = col[start:minute_pos]
-                for i in xrange(len(candidates) - 1, 0, -1):
-                    minute_pos -= 1
-                    value = candidates[i]
-                    if value != 0:
-                        if field == 'volume':
-                            return self._minute_index[minute_pos], value
-                        else:
-                            return self._minute_index[minute_pos], \
-                                value * self._ohlc_inverse
+        return _get_last_value(self, sid, dt, field)
 
     def _find_last_traded_position(self, asset, dt):
         volumes = self._open_minute_file('volume', asset)
@@ -676,7 +659,6 @@ class BcolzMinuteBarReader(object):
                 return minute_pos
             minute_pos -= 1
 
-    @remember_last
     def _find_position_of_minute(self, minute_dt):
         """
         Internal method that returns the position of the given minute in the
@@ -698,7 +680,12 @@ class BcolzMinuteBarReader(object):
         The position of the given minute in the list of all trading minutes
         since market open on the first trading day.
         """
-        pos = bisect_right(self._minute_index_values, minute_dt.value) - 1
-        if pos < 0:
-            raise KeyError
-        return pos
+        if minute_dt.value == self._last_seen_minute_value:
+            return self._last_seen_minute_pos
+        else:
+            pos = bisect_right(self._minute_index_values, minute_dt.value) - 1
+            if pos < 0:
+                raise KeyError
+            self._last_seen_minute_value = minute_dt.value
+            self._last_seen_minute_pos = pos
+            return pos

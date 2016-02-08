@@ -18,8 +18,15 @@ cdef class BarData:
     cdef object simulation_dt_func
     cdef object data_frequency
     cdef dict _views
+    cdef dict _current_views
 
 cdef class SidView:
+    cdef object asset
+    cdef object data_portal
+    cdef object simulation_dt_func
+    cdef object data_frequency
+
+cdef class CurrentSidView:
     cdef object asset
     cdef object data_portal
     cdef object simulation_dt_func

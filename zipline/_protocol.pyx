@@ -41,6 +41,7 @@ cdef class BarData:
         self.simulation_dt_func = simulation_dt_func
         self.data_frequency = data_frequency
         self._views = {}
+        self._current_views = {}
 
     def _get_equity_price_view(self, asset):
         """
@@ -68,8 +69,43 @@ cdef class BarData:
 
         return view
 
+    def _get_current_price_view(self, asset):
+        """
+        Returns a DataPortalSidView for the given asset.  Used to support the
+        data[sid(N)] public API.  Not needed if DataPortal is used standalone.
+
+        Parameters
+        ----------
+        asset : Asset
+            Asset that is being queried.
+
+        Returns
+        -------
+        SidView: Accessor into the given asset's data.
+        """
+        try:
+            view = self._current_views[asset]
+        except KeyError:
+            try:
+                asset = self.data_portal.env.asset_finder.retrieve_asset(asset)
+            except ValueError:
+                # assume fetcher
+                pass
+            view = self._current_views[asset] = \
+                self._create_current_sid_view(asset)
+
+        return view
+    
     def _create_sid_view(self, asset):
         return SidView(
+            asset,
+            self.data_portal,
+            self.simulation_dt_func,
+            self.data_frequency
+        )
+
+    def _create_current_sid_view(self, asset):
+        return CurrentSidView(
             asset,
             self.data_portal,
             self.simulation_dt_func,
@@ -90,6 +126,9 @@ cdef class BarData:
         return self.data_portal.get_fetcher_assets(
             normalize_date(self.simulation_dt_func())
         )
+
+    def get_current_bar(self, name):
+        return self._get_current_price_view(name)
 
 cdef class SidView:
     def __init__(self, asset, data_portal, simulation_dt_func, data_frequency):
@@ -142,6 +181,56 @@ cdef class SidView:
                 self.asset,
                 self.simulation_dt_func(),
                 self.data_frequency)
+
+
+cdef class CurrentSidView:
+    def __init__(self, asset, data_portal, simulation_dt_func, data_frequency):
+        """
+        Parameters
+        ---------
+        asset : Asset
+            The asset for which the instance retrieves data.
+
+        data_portal : DataPortal
+            Provider for bar pricing data.
+
+        simulation_dt_func: function
+            Function which returns the current simulation time.
+            This is usually bound to a method of TradingSimulation.
+
+        data_frequency: string
+            The frequency of the bar data; i.e. whether the data is
+            'daily' or 'minute' bars
+        """
+        self.asset = asset
+        self.data_portal = data_portal
+        self.simulation_dt_func = simulation_dt_func
+        self.data_frequency = data_frequency
+
+    def __getattr__(self, column):
+        return self.data_portal.get_exact_value(
+            self.asset,
+            column,
+            self.simulation_dt_func(),
+            self.data_frequency)
+
+    def __contains__(self, column):
+        return self.data_portal.contains(self.asset, column)
+
+    def __getitem__(self, column):
+        return self.__getattr__(column)
+
+    property sid:
+        def __get__(self):
+            return self.asset
+
+    property dt:
+        def __get__(self):
+            return self.datetime
+
+    property datetime:
+        def __get__(self):
+            return self.simulation_dt_func()
 
     property current_dt:
         def __get__(self):

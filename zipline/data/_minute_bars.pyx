@@ -23,10 +23,13 @@ cdef class Block:
 
     @cython.boundscheck(False)
     def __getitem__(self, idx):
+        cdef intp_t idx_
+
         if isinstance(idx, slice):
             return self.array[idx.start - self.start:idx.stop - self.start]
         else:
-            return self.array[idx - self.start]
+            idx_ = idx
+            return self.array[idx_ - self.start]
 
 @cython.boundscheck(False)
 cpdef get_last_value(reader, sid, dt, field):

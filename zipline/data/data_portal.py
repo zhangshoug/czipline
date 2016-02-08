@@ -259,6 +259,68 @@ class DataPortal(object):
 
                 raise KeyError
 
+    def get_exact_value(self, asset, field, dt, data_frequency):
+        """
+        Public API method that returns a scalar value representing the value
+        of the desired asset's field at either the given dt.
+
+        Parameters
+        ---------
+        asset : Asset
+            The asset whose data is desired.
+
+        field: string
+            The desired field of the asset.  Valid values are "open",
+            "open_price", "high", "low", "close", "close_price", "volume", and
+            "price".
+
+        dt: pd.Timestamp
+            The timestamp for the desired value.
+
+        data_frequency: string
+            The frequency of the data to query; i.e. whether the data is
+            'daily' or 'minute' bars
+
+        Returns
+        -------
+        The value of the desired field at the desired time.
+        """
+        if field not in BASE_FIELDS:
+            extra_source_val = self._check_extra_sources(
+                asset,
+                field,
+                dt,
+            )
+
+            if extra_source_val is not None:
+                return extra_source_val
+
+            raise KeyError("Invalid column: " + str(field))
+
+        column_to_use = BASE_FIELDS[field]
+
+        if isinstance(asset, int):
+            asset = self._asset_finder.retrieve_asset(asset)
+
+        # FIXME: This try/except should be removed when assets are correctly
+        # removed from portfolio.
+        try:
+            self._check_is_currently_alive(asset, dt)
+        except NoTradeDataAvailableTooLate:
+            return 0
+
+        if data_frequency == "daily":
+            day_to_use = dt
+            day_to_use = normalize_date(day_to_use)
+            return self._get_daily_data(asset, column_to_use, day_to_use)
+        else:
+            if isinstance(asset, Future):
+                return self._get_minute_spot_value_future(
+                    asset, column_to_use, dt)
+            else:
+                return self._equity_minute_reader.get_value(
+                    asset, dt, column_to_use)
+
     def get_spot_value(self, asset, field, dt, data_frequency):
         """
         Public API method that returns a scalar value representing the value

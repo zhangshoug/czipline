@@ -230,7 +230,7 @@ class Blotter(object):
         transactions = []
 
         for asset, asset_orders in iteritems(self.open_orders):
-            trade_bar = bar_data[asset]
+            trade_bar = bar_data.get_current_bar(asset)
 
             for order, txn in self.slippage_func(trade_bar, asset_orders):
                 direction = math.copysign(1, txn.amount)

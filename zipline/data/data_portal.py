@@ -301,9 +301,7 @@ class DataPortal(object):
 
         # FIXME: This try/except should be removed when assets are correctly
         # removed from portfolio.
-        try:
-            self._check_is_currently_alive(asset, dt)
-        except NoTradeDataAvailableTooLate:
+        if asset.end_date < dt:
             return 0
 
         if data_frequency == "daily":
@@ -363,9 +361,7 @@ class DataPortal(object):
 
         # FIXME: This try/except should be removed when assets are correctly
         # removed from portfolio.
-        try:
-            self._check_is_currently_alive(asset, dt)
-        except NoTradeDataAvailableTooLate:
+        if asset.end_date < dt:
             return 0
 
         if data_frequency == "daily":
@@ -488,15 +484,8 @@ class DataPortal(object):
             return result
 
     def _get_minute_spot_value(self, asset, column, dt):
-        if column == 'volume':
-            return self._equity_minute_reader.get_value(
-                asset,
-                dt,
-                column
-            )
-
-        last_traded_dt, result = self._equity_minute_reader.get_last_value(
-            asset.sid,
+        result = self._equity_minute_reader.get_value(
+            asset,
             dt,
             column
         )
@@ -504,23 +493,25 @@ class DataPortal(object):
         if result > 0 or column == "volume":
             return result
 
+        last_traded_dt, result = self._equity_minute_reader.get_last_value(
+            asset.sid,
+            dt,
+            column
+        )
+
         if last_traded_dt is pd.NaT:
             # no last traded dt, bail
             return 0
-
-        # get the value as of the last traded dt
-        result = self._equity_minute_reader.get_value(
-            asset.sid,
-            last_traded_dt,
-            column
-        )
 
         if np.isnan(result):
             return 0
 
         # adjust if needed
-        return self._get_adjusted_value(asset, column, last_traded_dt, dt,
-                                        "minute", spot_value=result)
+        if last_traded_dt.date() == dt.date():
+            return result
+        else:
+            return self._get_adjusted_value(asset, column, last_traded_dt, dt,
+                                            "minute", spot_value=result)
 
     def _get_daily_data(self, asset, column, dt):
         while True:

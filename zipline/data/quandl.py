@@ -100,7 +100,7 @@ def fetch_single_equity(api_key, symbol, start_date, end_date, retries=5):
     """
     Download data for a single equity.
     """
-    for i in retries:
+    for i in range(retries):
         try:
             return pd.read_csv(
                 format_wiki_url(api_key, symbol, start_date, end_date),

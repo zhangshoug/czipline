@@ -294,16 +294,14 @@ class DailyHistoryAggregator(object):
         -------
         np.array with dtype=float64, in order of assets parameter.
         """
-        market_open, prev_dt, dt_value, entries = self._prelude(dt, 'close')
 
-        closes = []
+        def get_close(asset, dt):
+            market_open, prev_dt, dt_value, entries = \
+                self._prelude(dt, 'close')
 
-        for asset in assets:
             if prev_dt is None:
                 val = self._minute_reader.get_value(asset, dt, 'close')
                 entries[asset] = (dt_value, val)
-                closes.append(val)
-                continue
             else:
                 try:
                     last_visited_dt, last_close = entries[asset]
@@ -313,27 +311,28 @@ class DailyHistoryAggregator(object):
                         if pd.isnull(val):
                             val = last_close
                         entries[asset] = (dt_value, val)
-                        closes.append(val)
-                        continue
                     else:
                         val = self._minute_reader.get_value(
                             asset, dt, 'close')
                         if pd.isnull(val):
-                            val = self.closes(
-                                [asset],
-                                pd.Timestamp(prev_dt, tz='UTC'))
+                            val = get_close(
+                                asset, pd.Timestamp(prev_dt, tz='UTC'))
                         entries[asset] = (dt_value, val)
-                        closes.append(val)
-                        continue
                 except KeyError:
                     val = self._minute_reader.get_value(
                         asset, dt, 'close')
                     if pd.isnull(val):
-                        val = self.closes([asset],
-                                          pd.Timestamp(prev_dt, tz='UTC'))
+                        val = get_close(asset, pd.Timestamp(prev_dt, tz='UTC'))
                     entries[asset] = (dt_value, val)
-                    closes.append(val)
-                    continue
+
+            return val
+
+        closes = []
+
+        for asset in assets:
+            close_val = get_close(asset, dt)
+            closes.append(close_val)
+
         return np.array(closes)
 
     def volumes(self, assets, dt):

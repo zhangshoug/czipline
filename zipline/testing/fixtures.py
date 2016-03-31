@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from pandas.util.testing import assert_series_equal
 from six import with_metaclass
+from testfixtures import TempDirectory
 
 from .core import tmp_asset_finder, make_simple_equity_info, gen_calendars
 from ..finance.trading import TradingEnvironment
@@ -417,3 +418,23 @@ class WithPipelineEventDataLoader(WithAssetFinder):
                 assert_series_equal(result[col_name].xs(sid, level=1),
                                     cols[col_name][sid],
                                     check_names=False)
+
+
+class WithTempdir(object):
+    """
+    ZiplineTestCase mixin providing cls.tempdir as a class-level fixture.
+    After init_class_fixtures has been called, `cls.tempdir` is populated
+    with a TempDirectory object.
+    The default value of TEMPDIR_PATH is None.
+    Inheritors can override TEMPDIR_PATH to path argument to `TempDirectory`
+    """
+
+    TEMPDIR_PATH = None
+
+    @classmethod
+    def init_class_fixtures(cls):
+        super(WithTempdir, cls).init_class_fixtures()
+
+        cls.tempdir = TempDirectory(path=cls.TEMPDIR_PATH)
+
+        cls.add_class_callback(cls.tempdir.cleanup)

@@ -10,7 +10,7 @@ from zipline.data.us_equity_pricing import (
     BcolzDailyBarWriter,
     OHLC,
 )
-from zipline.data import daily_bar_compare
+from zipline.data.daily_bar_compare import DailyBarComparison
 
 
 from zipline.testing.fixtures import (
@@ -72,14 +72,18 @@ class DailyBarCompareTestCase(WithTempdir,
         cls.reader_a = BcolzDailyBarReader(cls.path_a)
         cls.reader_b = BcolzDailyBarReader(cls.path_b)
 
+        cls.comp_output_dir = cls.tempdir.makedir('comp_dir')
+
     def init_instance_fixtures(self):
         super(DailyBarCompareTestCase, self).init_instance_fixtures()
 
-        self.results = daily_bar_compare.compare(
+        self.daily_bar_comparison = DailyBarComparison(
+            self.comp_output_dir,
             self.env.trading_days,
+            self.asset_finder,
+            self.assets,
             self.reader_a,
             self.reader_b,
-            self.assets,
             self.TRADING_ENV_MIN_DATE,
             self.TRADING_ENV_MAX_DATE
         )

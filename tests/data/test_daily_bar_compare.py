@@ -10,6 +10,7 @@ from zipline.data.us_equity_pricing import (
     BcolzDailyBarWriter,
     OHLC,
 )
+from zipline.data import daily_bar_compare
 
 
 from zipline.testing.fixtures import (
@@ -49,6 +50,9 @@ class DailyBarCompareTestCase(WithTempdir,
                               WithAssetFinder,
                               ZiplineTestCase):
 
+    TRADING_ENV_MIN_DATE = Timestamp("2016-03-01", tz="UTC")
+    TRADING_ENV_MAX_DATE = Timestamp("2016-03-31", tz="UTC")
+
     @classmethod
     def init_class_fixtures(cls):
         super(DailyBarCompareTestCase, cls).init_class_fixtures()
@@ -57,15 +61,28 @@ class DailyBarCompareTestCase(WithTempdir,
         cls.path_b = cls.tempdir.makedir('b')
 
         writer_a = BcolzDailyBarWriterFromFrames(cls.make_reader_a_data())
-        assets = cls.env.asset_finder.retrieve_all(cls.env.asset_finder.sids)
+        cls.assets = cls.env.asset_finder.retrieve_all(
+            cls.env.asset_finder.sids)
         writer_a.write(
-            cls.path_a, cls.env.trading_days, assets)
+            cls.path_a, cls.env.trading_days, cls.assets)
         writer_b = BcolzDailyBarWriterFromFrames(cls.make_reader_b_data())
         writer_b.write(
-            cls.path_b, cls.env.trading_days, assets)
+            cls.path_b, cls.env.trading_days, cls.assets)
 
         cls.reader_a = BcolzDailyBarReader(cls.path_a)
         cls.reader_b = BcolzDailyBarReader(cls.path_b)
+
+    def init_instance_fixtures(self):
+        super(DailyBarCompareTestCase, self).init_instance_fixtures()
+
+        self.results = daily_bar_compare.compare(
+            self.env.trading_days,
+            self.reader_a,
+            self.reader_b,
+            self.assets,
+            self.TRADING_ENV_MIN_DATE,
+            self.TRADING_ENV_MAX_DATE
+        )
 
     @classmethod
     def make_equities_info(cls):
@@ -76,7 +93,7 @@ class DailyBarCompareTestCase(WithTempdir,
                 "symbol": "EQUITY1",
             },
             2: {
-                "start_date": Timestamp("2016-03-01", tz='UTC'),
+                "start_date": Timestamp("2016-03-28", tz='UTC'),
                 "end_date": Timestamp("2016-03-31", tz='UTC'),
                 "symbol": "EQUITY2"
             },
@@ -130,4 +147,5 @@ class DailyBarCompareTestCase(WithTempdir,
         }
 
     def test_compare(self):
-        pass
+        self.results
+        import nose; nose.tools.set_trace()

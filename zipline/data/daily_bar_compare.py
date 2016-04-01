@@ -101,6 +101,9 @@ class DailyBarComparison(object):
             end = asset_end_loc - start_loc
             asset_data_a = data_a[start:end, i]
             asset_data_b = data_b[start:end, i]
+            zero_a == asset_data_a
+            zero_b == asset_data_b
+            import nose; nose.tools.set_trace()
             equal_arr = asset_data_a == asset_data_b
             if not np.all(equal_arr):
                 where_diff = where(~equal_arr)[0]
@@ -109,12 +112,21 @@ class DailyBarComparison(object):
 
                 path = self.asset_path(asset)
 
+                dates = [str(x).split()[0] for x in days_where_diff]
+                import nose; nose.tools.set_trace()
+
+                data = {
+                    'dates': dates,
+                    
+
+                }
+
                 with open(path, mode='w') as fp:
                     json.dump([str(x).split()[0] for x in days_where_diff], fp)
                 self._processed.add_has_diff(int(asset))
             self._processed.add_processed(int(asset))
 
-    def where_unmatched(self):
+    def unmatched_values(self):
         result = {}
         for sid in self._processed.has_diff():
             path = self.asset_path(sid)
@@ -123,25 +135,3 @@ class DailyBarComparison(object):
                 dts = to_datetime(data)
                 result[sid] = dts
         return result
-
-    def unmatched_values(self):
-        unmatched = self.where_unmatched()
-
-        data_a = self.reader_a.load_raw_arrays(
-            [self.field], self.start_date, self.end_date, self.assets)[0]
-        data_b = self.reader_b.load_raw_arrays(
-            [self.field], self.start_date, self.end_date, self.assets)[0]
-
-        start_loc = self.calendar.get_loc(self.start_date)
-        for i, asset in enumerate(self.assets):
-            if asset in unmatched:
-                where_diff = unmatched[asset]
-                asset_start_loc = self.calendar.get_loc(
-                    max(asset.start_date, self.start_date))
-                asset_end_loc = self.calendar.get_loc(min(asset.end_date,
-                                                          self.end_date))
-                start = asset_start_loc - start_loc
-                end = asset_end_loc - start_loc
-                asset_data_a = data_a[start:end, i]
-                asset_data_b = data_b[start:end, i]
-                equal_arr = asset_data_a == asset_data_b

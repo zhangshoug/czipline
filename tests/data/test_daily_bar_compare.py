@@ -81,12 +81,13 @@ class DailyBarCompareTestCase(WithTempdir,
             self.comp_output_dir,
             self.env.trading_days,
             self.asset_finder,
-            self.assets,
             self.reader_a,
             self.reader_b,
             self.TRADING_ENV_MIN_DATE,
-            self.TRADING_ENV_MAX_DATE
+            self.TRADING_ENV_MAX_DATE,
+            self.assets,
         )
+        self.daily_bar_comparison.compare()
 
     @classmethod
     def make_equities_info(cls):
@@ -151,5 +152,7 @@ class DailyBarCompareTestCase(WithTempdir,
         }
 
     def test_compare(self):
-        self.results
+        self.daily_bar_comparison.compare()
+        self.daily_bar_comparison.unmatched_values()
         import nose; nose.tools.set_trace()
+        assert True

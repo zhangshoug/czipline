@@ -1,6 +1,8 @@
 #
 # Copyright 2016 Quantopian, Inc.
 #
+import click
+
 from collections import namedtuple
 import simplejson
 import os
@@ -66,9 +68,15 @@ class DailyBarComparison(object):
         self.start_date = start_date
         self.end_date = end_date
         if assets is None:
-            self.assets = sorted(asset_finder.retrieve_all(asset_finder.sids))
+            self.assets = sorted(asset_finder.retrieve_all(
+                asset_finder.group_by_type(asset_finder.sids)['equity']))
         else:
             self.assets = assets
+
+        self.assets = [asset for asset in self.assets if
+                       (asset in self.reader_a._first_rows)
+                       and
+                       (asset in self.reader_b._first_rows)]
         self.field = USEquityPricing.volume
         self._processed = _Processed(rootdir)
 
@@ -81,12 +89,12 @@ class DailyBarComparison(object):
             [self.field], self.start_date, self.end_date, self.assets)[0]
         data_b = self.reader_b.load_raw_arrays(
             [self.field], self.start_date, self.end_date, self.assets)[0]
-        start_loc = self.calendar.get_loc(self.start_date)
+        start_loc = self.calendar.searchsorted(self.start_date)
         for i, asset in enumerate(self.assets):
-            asset_start_loc = self.calendar.get_loc(
+            asset_start_loc = self.calendar.searchsorted(
                 max(asset.start_date, self.start_date))
-            asset_end_loc = self.calendar.get_loc(min(asset.end_date,
-                                                      self.end_date))
+            asset_end_loc = self.calendar.searchsorted(min(asset.end_date,
+                                                           self.end_date))
             start = asset_start_loc - start_loc
             end = asset_end_loc - start_loc
             asset_data_a = data_a[start:end, i]
@@ -121,3 +129,63 @@ class DailyBarComparison(object):
                 data = simplejson.load(fp)
                 result[sid] = Unpaired(**data)
         return result
+
+
+@click.command()
+@click.option(
+    '--a',
+    type=click.Path(),
+)
+@click.option(
+    '--b',
+    type=click.Path(),
+)
+@click.option(
+    '--output',
+    type=click.Path(),
+)
+@click.option(
+    '--assets-db-path',
+    type=click.Path(),
+)
+@click.option(
+    '--min-date',
+    type=click.STRING,
+)
+@click.option(
+    '--max-date',
+    type=click.STRING,
+)
+def find_unpaired_bars(a, b, output, assets_db_path, min_date, max_date):
+    from zipline.data.us_equity_pricing import BcolzDailyBarReader
+    from zipline.finance.trading import TradingEnvironment
+    from pandas import Timestamp
+    reader_a = BcolzDailyBarReader(a)
+    reader_b = BcolzDailyBarReader(b)
+
+    if not os.path.exists(output):
+        os.makedirs(output)
+
+    min_date = Timestamp(min_date, tz='UTC')
+    max_date = Timestamp(max_date, tz='UTC')
+
+    env = TradingEnvironment(min_date=min_date,
+                             max_date=max_date,
+                             asset_db_path=assets_db_path)
+
+    daily_bar_comparison = DailyBarComparison(
+        output,
+        env.trading_days,
+        env.asset_finder,
+        reader_a,
+        reader_b,
+        min_date,
+        max_date,
+    )
+    daily_bar_comparison.compare()
+    results = daily_bar_comparison.unpaired_values()
+    import nose; nose.tools.set_trace()
+    assert True
+
+if __name__ == '__main__':
+    find_unpaired_bars()

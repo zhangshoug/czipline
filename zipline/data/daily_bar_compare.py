@@ -2,18 +2,17 @@
 # Copyright 2016 Quantopian, Inc.
 #
 from collections import namedtuple
-import glob
 import simplejson
 import os
 
 import numpy as np
-from numpy import isclose, where
-from pandas import DataFrame, Timestamp, to_datetime
+from numpy import where
 
 from zipline.pipeline.data.equity_pricing import USEquityPricing
 
 
 Unpaired = namedtuple('Unpaired', ('dates', 'a', 'b'))
+
 
 class _Processed(object):
 

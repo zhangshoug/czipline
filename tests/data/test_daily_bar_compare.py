@@ -153,6 +153,9 @@ class DailyBarCompareTestCase(WithTempdir,
 
     def test_compare(self):
         self.daily_bar_comparison.compare()
-        self.daily_bar_comparison.unmatched_values()
-        import nose; nose.tools.set_trace()
-        assert True
+        unpaired = self.daily_bar_comparison.unpaired_values()
+        self.assertIn(2, unpaired)
+        dates, a_values, b_values = unpaired[2]
+        self.assertEqual(dates, ['2016-03-29'])
+        self.assertEqual(a_values, [200001])
+        self.assertEqual(b_values, [0])

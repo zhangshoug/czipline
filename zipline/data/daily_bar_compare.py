@@ -1,8 +1,9 @@
 #
 # Copyright 2016 Quantopian, Inc.
 #
+from collections import namedtuple
 import glob
-import json
+import simplejson
 import os
 
 import numpy as np
@@ -12,17 +13,7 @@ from pandas import DataFrame, Timestamp, to_datetime
 from zipline.pipeline.data.equity_pricing import USEquityPricing
 
 
-class PricingComp(object):
-
-    def __init__(self, asset, diff_frame):
-        self.asset = asset
-        self.diff_frame = diff_frame
-
-    def __repr__(self):
-        return "PricingComp: asset={0} diff_frame={1}".format(
-            self.asset,
-            self.diff_frame.head() if self.diff_frame is not None else None)
-
+Unpaired = namedtuple('Unpaired', ('dates', 'a', 'b'))
 
 class _Processed(object):
 
@@ -101,37 +92,33 @@ class DailyBarComparison(object):
             end = asset_end_loc - start_loc
             asset_data_a = data_a[start:end, i]
             asset_data_b = data_b[start:end, i]
-            zero_a == asset_data_a
-            zero_b == asset_data_b
-            import nose; nose.tools.set_trace()
-            equal_arr = asset_data_a == asset_data_b
-            if not np.all(equal_arr):
-                where_diff = where(~equal_arr)[0]
+            zero_a = asset_data_a == 0
+            zero_b = asset_data_b == 0
+            where_both = zero_a == zero_b
+            if not np.all(where_both):
+                where_diff = where(~where_both)[0]
 
                 days_where_diff = self.calendar[where_diff + asset_start_loc]
 
                 path = self.asset_path(asset)
 
                 dates = [str(x).split()[0] for x in days_where_diff]
-                import nose; nose.tools.set_trace()
-
-                data = {
-                    'dates': dates,
-                    
-
-                }
+                data = Unpaired(
+                    dates,
+                    asset_data_a[where_diff].tolist(),
+                    asset_data_b[where_diff].tolist(),
+                )
 
                 with open(path, mode='w') as fp:
-                    json.dump([str(x).split()[0] for x in days_where_diff], fp)
+                    simplejson.dump(data, fp)
                 self._processed.add_has_diff(int(asset))
             self._processed.add_processed(int(asset))
 
-    def unmatched_values(self):
+    def unpaired_values(self):
         result = {}
         for sid in self._processed.has_diff():
             path = self.asset_path(sid)
             with open(path, mode='r') as fp:
-                data = json.load(fp)
-                dts = to_datetime(data)
-                result[sid] = dts
+                data = simplejson.load(fp)
+                result[sid] = Unpaired(**data)
         return result

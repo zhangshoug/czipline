@@ -10,7 +10,7 @@ from zipline.data.us_equity_pricing import (
     BcolzDailyBarWriter,
     OHLC,
 )
-from zipline.data.data_checks import DailyBarComparison
+from zipline.data.data_checks import UnpairedDailyBars
 
 
 from zipline.testing.fixtures import (
@@ -45,17 +45,17 @@ class BcolzDailyBarWriterFromFrames(BcolzDailyBarWriter):
             return (array.view(int64) / nanos_per_second).astype(uint32)
 
 
-class DailyBarCompareTestCase(WithTempdir,
-                              WithTradingEnvironment,
-                              WithAssetFinder,
-                              ZiplineTestCase):
+class UnpairedDailyBarTestCase(WithTempdir,
+                               WithTradingEnvironment,
+                               WithAssetFinder,
+                               ZiplineTestCase):
 
     TRADING_ENV_MIN_DATE = Timestamp("2016-03-01", tz="UTC")
     TRADING_ENV_MAX_DATE = Timestamp("2016-03-31", tz="UTC")
 
     @classmethod
     def init_class_fixtures(cls):
-        super(DailyBarCompareTestCase, cls).init_class_fixtures()
+        super(UnpairedDailyBarTestCase, cls).init_class_fixtures()
 
         cls.path_a = cls.tempdir.makedir('a')
         cls.path_b = cls.tempdir.makedir('b')
@@ -75,9 +75,9 @@ class DailyBarCompareTestCase(WithTempdir,
         cls.comp_output_dir = cls.tempdir.makedir('comp_dir')
 
     def init_instance_fixtures(self):
-        super(DailyBarCompareTestCase, self).init_instance_fixtures()
+        super(UnpairedDailyBarTestCase, self).init_instance_fixtures()
 
-        self.daily_bar_comparison = DailyBarComparison(
+        self.daily_bar_comparison = UnpairedDailyBars(
             self.comp_output_dir,
             self.env.trading_days,
             self.asset_finder,
@@ -87,7 +87,6 @@ class DailyBarCompareTestCase(WithTempdir,
             self.TRADING_ENV_MAX_DATE,
             self.assets,
         )
-        self.daily_bar_comparison.compare()
 
     @classmethod
     def make_equities_info(cls):
@@ -152,8 +151,7 @@ class DailyBarCompareTestCase(WithTempdir,
         }
 
     def test_compare(self):
-        self.daily_bar_comparison.compare()
-        unpaired = self.daily_bar_comparison.unpaired_values()
+        unpaired = self.daily_bar_comparison.unpaired()
         self.assertIn(2, unpaired)
         dates, a_values, b_values = unpaired[2]
         self.assertEqual(dates, ['2016-03-29'])

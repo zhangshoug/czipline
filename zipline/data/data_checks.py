@@ -4,7 +4,6 @@
 import click
 
 from collections import namedtuple
-import simplejson
 import os
 
 import numpy as np
@@ -45,13 +44,13 @@ class UnpairedDailyBars(object):
                        and
                        (asset in self.reader_b._first_rows)]
         self.field = USEquityPricing.volume
-        self._processed = _Processed(rootdir)
 
     def asset_path(self, asset):
         return os.path.join(
             self.rootdir, "{0}.json".format(int(asset)))
 
-    def compare(self):
+    def unpaired(self):
+        result = {}
         data_a = self.reader_a.load_raw_arrays(
             [self.field], self.start_date, self.end_date, self.assets)[0]
         data_b = self.reader_b.load_raw_arrays(
@@ -74,85 +73,11 @@ class UnpairedDailyBars(object):
 
                 days_where_diff = self.calendar[where_diff + asset_start_loc]
 
-                path = self.asset_path(asset)
-
                 dates = [str(x).split()[0] for x in days_where_diff]
                 data = Unpaired(
                     dates,
                     asset_data_a[where_diff].tolist(),
                     asset_data_b[where_diff].tolist(),
                 )
-
-                with open(path, mode='w') as fp:
-                    simplejson.dump(data, fp)
-                self._processed.add_has_diff(int(asset))
-            self._processed.add_processed(int(asset))
-
-    def unpaired_values(self):
-        result = {}
-        for sid in self._processed.has_diff():
-            path = self.asset_path(sid)
-            with open(path, mode='r') as fp:
-                data = simplejson.load(fp)
-                result[sid] = Unpaired(**data)
+                result[asset] = data
         return result
-
-
-@click.command()
-@click.option(
-    '--a',
-    type=click.Path(),
-)
-@click.option(
-    '--b',
-    type=click.Path(),
-)
-@click.option(
-    '--output',
-    type=click.Path(),
-)
-@click.option(
-    '--assets-db-path',
-    type=click.Path(),
-)
-@click.option(
-    '--min-date',
-    type=click.STRING,
-)
-@click.option(
-    '--max-date',
-    type=click.STRING,
-)
-def find_unpaired_bars(a, b, output, assets_db_path, min_date, max_date):
-    from zipline.data.us_equity_pricing import BcolzDailyBarReader
-    from zipline.finance.trading import TradingEnvironment
-    from pandas import Timestamp
-    reader_a = BcolzDailyBarReader(a)
-    reader_b = BcolzDailyBarReader(b)
-
-    if not os.path.exists(output):
-        os.makedirs(output)
-
-    min_date = Timestamp(min_date, tz='UTC')
-    max_date = Timestamp(max_date, tz='UTC')
-
-    env = TradingEnvironment(min_date=min_date,
-                             max_date=max_date,
-                             asset_db_path=assets_db_path)
-
-    daily_bar_comparison = DailyBarComparison(
-        output,
-        env.trading_days,
-        env.asset_finder,
-        reader_a,
-        reader_b,
-        min_date,
-        max_date,
-    )
-    daily_bar_comparison.compare()
-    results = daily_bar_comparison.unpaired_values()
-    import nose; nose.tools.set_trace()
-    assert True
-
-if __name__ == '__main__':
-    find_unpaired_bars()

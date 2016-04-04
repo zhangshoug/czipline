@@ -1,7 +1,7 @@
 #
 # Copyright 2016 Quantopian, Inc.
 #
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 import os
 
 import numpy as np
@@ -50,7 +50,7 @@ class UnpairedDailyBars(object):
             self.rootdir, "{0}.json".format(int(asset)))
 
     def unpaired(self):
-        result = {}
+        result = OrderedDict()
         data_a = self.reader_a.load_raw_arrays(
             [self.field], self.start_date, self.end_date, self.assets)[0]
         data_b = self.reader_b.load_raw_arrays(

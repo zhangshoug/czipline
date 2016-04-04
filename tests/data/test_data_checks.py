@@ -74,19 +74,14 @@ class UnpairedDailyBarTestCase(WithTempdir,
         cls.reader_a = BcolzDailyBarReader(cls.path_a)
         cls.reader_b = BcolzDailyBarReader(cls.path_b)
 
-        cls.comp_output_dir = cls.tempdir.makedir('comp_dir')
-
     def init_instance_fixtures(self):
         super(UnpairedDailyBarTestCase, self).init_instance_fixtures()
 
         self.daily_bar_comparison = UnpairedDailyBars(
-            self.comp_output_dir,
             self.env.trading_days,
             self.asset_finder,
             self.reader_a,
             self.reader_b,
-            self.TRADING_ENV_MIN_DATE,
-            self.TRADING_ENV_MAX_DATE,
             self.assets,
         )
 
@@ -152,13 +147,13 @@ class UnpairedDailyBarTestCase(WithTempdir,
             })
         }
 
-    @property
-    def expected(self):
-        return {
+    def test_unpaired(self):
+        expected = {
             self.asset_finder.retrieve_asset(2):
             ([Timestamp('2016-03-29', tz='UTC')], [200001], [0])
         }
-
-    def test_unpaired(self):
-        unpaired = self.daily_bar_comparison.unpaired()
-        self.assertEqual(self.expected, unpaired)
+        unpaired = self.daily_bar_comparison.unpaired(
+            self.TRADING_ENV_MIN_DATE,
+            self.TRADING_ENV_MAX_DATE,
+        )
+        self.assertEqual(expected, unpaired)

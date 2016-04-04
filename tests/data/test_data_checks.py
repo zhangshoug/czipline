@@ -51,7 +51,6 @@ class UnpairedDailyBarTestCase(WithTempdir,
                                WithTradingEnvironment,
                                WithAssetFinder,
                                ZiplineTestCase):
-    maxDiff = None
 
     TRADING_ENV_MIN_DATE = Timestamp("2016-03-01", tz="UTC")
     TRADING_ENV_MAX_DATE = Timestamp("2016-03-31", tz="UTC")

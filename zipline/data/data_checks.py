@@ -19,13 +19,11 @@ class UnpairedDailyBars(object):
                  asset_finder,
                  reader_a,
                  reader_b,
-                 ignore_ipo=False,
                  assets=None):
         self.calendar = calendar
         self.asset_finder = asset_finder
         self.reader_a = reader_a
         self.reader_b = reader_b
-        self.ignore_ipo = ignore_ipo
         if assets is None:
             self.assets = sorted(asset_finder.retrieve_all(
                 asset_finder.group_by_type(asset_finder.sids)['equity']))
@@ -47,7 +45,7 @@ class UnpairedDailyBars(object):
         start_loc = self.calendar.searchsorted(start_date)
         for i, asset in enumerate(self.assets):
             if asset.start_date >= start_date:
-                if self.ignore_ipo:
+                if ignore_ipo:
                     asset_start_date = asset.start_date + self.calendar.freq
                 else:
                     asset_start_date = asset.start_date

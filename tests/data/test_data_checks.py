@@ -164,7 +164,7 @@ class UnpairedDailyBarMissingInB(UnpairedDailyBarTestCase):
     @classmethod
     def make_reader_a_data(cls):
         tds = cls.env.trading_days
-        days = tds[tds.slice_indexer('2016-03-25', '2016-03-30')].asi8
+        days = tds[tds.slice_indexer('2016-03-24', '2016-03-29')].asi8
         return {
             1: DataFrame({
                 'open': [105.1, 105.2, 105.3],
@@ -187,7 +187,7 @@ class UnpairedDailyBarMissingInB(UnpairedDailyBarTestCase):
     @classmethod
     def make_reader_b_data(cls):
         tds = cls.env.trading_days
-        days = tds[tds.slice_indexer('2016-03-25', '2016-03-30')].asi8
+        days = tds[tds.slice_indexer('2016-03-24', '2016-03-29')].asi8
         return {
             1: DataFrame({
                 'open': [105.1, 105.2, 105.3],
@@ -210,11 +210,20 @@ class UnpairedDailyBarMissingInB(UnpairedDailyBarTestCase):
     def test_missing_in_b(self):
         expected = {
             self.asset_finder.retrieve_asset(2):
-            ([Timestamp('2016-03-29', tz='UTC')], [200001], [0])
+            ([Timestamp('2016-03-28', tz='UTC')], [200001], [0])
         }
         unpaired = self.daily_bar_comparison.unpaired(
             self.TRADING_ENV_MIN_DATE,
             self.TRADING_ENV_MAX_DATE,
+        )
+        self.assertEqual(expected, unpaired)
+
+    def test_missing_in_b_ignore_ipo(self):
+        expected = {}
+        unpaired = self.daily_bar_comparison.unpaired(
+            self.TRADING_ENV_MIN_DATE,
+            self.TRADING_ENV_MAX_DATE,
+            ignore_ipo=True,
         )
         self.assertEqual(expected, unpaired)
 

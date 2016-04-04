@@ -79,9 +79,8 @@ class UnpairedDailyBars(object):
 
                 days_where_diff = self.calendar[where_diff + asset_start_loc]
 
-                dates = [str(x).split()[0] for x in days_where_diff]
                 data = Unpaired(
-                    dates,
+                    days_where_diff,
                     asset_data_a[where_diff].tolist(),
                     asset_data_b[where_diff].tolist(),
                 )

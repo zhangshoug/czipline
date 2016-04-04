@@ -10,7 +10,9 @@ from zipline.data.us_equity_pricing import (
     BcolzDailyBarWriter,
     OHLC,
 )
-from zipline.data.data_checks import UnpairedDailyBars
+from zipline.data.data_checks import (
+    UnpairedDailyBars,
+)
 
 
 from zipline.testing.fixtures import (
@@ -49,6 +51,7 @@ class UnpairedDailyBarTestCase(WithTempdir,
                                WithTradingEnvironment,
                                WithAssetFinder,
                                ZiplineTestCase):
+    maxDiff = None
 
     TRADING_ENV_MIN_DATE = Timestamp("2016-03-01", tz="UTC")
     TRADING_ENV_MAX_DATE = Timestamp("2016-03-31", tz="UTC")
@@ -150,10 +153,13 @@ class UnpairedDailyBarTestCase(WithTempdir,
             })
         }
 
-    def test_compare(self):
+    @property
+    def expected(self):
+        return {
+            self.asset_finder.retrieve_asset(2):
+            ([Timestamp('2016-03-29', tz='UTC')], [200001], [0])
+        }
+
+    def test_unpaired(self):
         unpaired = self.daily_bar_comparison.unpaired()
-        self.assertIn(2, unpaired)
-        dates, a_values, b_values = unpaired[2]
-        self.assertEqual(dates, ['2016-03-29'])
-        self.assertEqual(a_values, [200001])
-        self.assertEqual(b_values, [0])
+        self.assertEqual(self.expected, unpaired)

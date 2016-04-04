@@ -101,25 +101,28 @@ class UnpairedDailyBarTestCase(WithTempdir,
         },
             orient='index')
 
+
+class UnpairedDailyBarAllEqual(UnpairedDailyBarTestCase):
+
     @classmethod
     def make_reader_a_data(cls):
         tds = cls.env.trading_days
-        days = tds[tds.slice_indexer('2016-03-25', '2016-03-30')]
+        days = tds[tds.slice_indexer('2016-03-25', '2016-03-30')].asi8
         return {
             1: DataFrame({
-                'open': [0, 105.1, 105.2, 105.3],
-                'high': [0, 110.1, 110.2, 110.3],
-                'low': [0, 100.1, 100.2, 100.3],
-                'close': [0, 106.1, 106.2, 106.3],
-                'volume': [0, 100000, 100001, 100002],
-                'day': days,
+                'open': [105.1, 105.2, 105.3],
+                'high': [110.1, 110.2, 110.3],
+                'low': [100.1, 100.2, 100.3],
+                'close':  [106.1, 106.2, 106.3],
+                'volume': [100000, 100001, 100002],
+                'day': days
             }),
             2: DataFrame({
-                'open': [0, 205.1, 205.2, 205.3],
-                'high': [0, 210.1, 210.2, 210.3],
-                'low': [0, 200.1, 200.2, 200.3],
-                'close': [0, 206.1, 206.2, 206.3],
-                'volume': [0, 200000, 200001, 200002],
+                'open': [205.1, 205.2, 205.3],
+                'high': [210.1, 210.2, 210.3],
+                'low': [200.1, 200.2, 200.3],
+                'close': [206.1, 206.2, 206.3],
+                'volume': [200000, 200001, 200002],
                 'day': days,
             })
         }
@@ -127,7 +130,7 @@ class UnpairedDailyBarTestCase(WithTempdir,
     @classmethod
     def make_reader_b_data(cls):
         tds = cls.env.trading_days
-        days = tds[tds.slice_indexer('2016-03-28', '2016-03-30')]
+        days = tds[tds.slice_indexer('2016-03-25', '2016-03-30')].asi8
         return {
             1: DataFrame({
                 'open': [105.1, 105.2, 105.3],
@@ -138,19 +141,136 @@ class UnpairedDailyBarTestCase(WithTempdir,
                 'day': days,
             }),
             2: DataFrame({
-                'open': [205.1, 0, 305.3],
-                'high': [210.1, 0, 310.3],
-                'low': [200.1, 0, 300.3],
-                'close': [206.1, 0, 306.3],
-                'volume': [200000, 0, 300002],
+                'open': [205.1, 205.2, 205.3],
+                'high': [210.1, 210.2, 210.3],
+                'low': [200.1, 200.2, 200.3],
+                'close': [206.1, 206.2, 206.3],
+                'volume': [200000, 200001, 200002],
                 'day': days,
             })
         }
 
-    def test_unpaired(self):
+    def test_equal(self):
+        expected = {}
+        unpaired = self.daily_bar_comparison.unpaired(
+            self.TRADING_ENV_MIN_DATE,
+            self.TRADING_ENV_MAX_DATE,
+        )
+        self.assertEqual(expected, unpaired)
+
+
+class UnpairedDailyBarMissingInB(UnpairedDailyBarTestCase):
+
+    @classmethod
+    def make_reader_a_data(cls):
+        tds = cls.env.trading_days
+        days = tds[tds.slice_indexer('2016-03-25', '2016-03-30')].asi8
+        return {
+            1: DataFrame({
+                'open': [105.1, 105.2, 105.3],
+                'high': [110.1, 110.2, 110.3],
+                'low': [100.1, 100.2, 100.3],
+                'close':  [106.1, 106.2, 106.3],
+                'volume': [100000, 100001, 100002],
+                'day': days,
+            }),
+            2: DataFrame({
+                'open': [205.1, 205.2, 205.3],
+                'high': [210.1, 210.2, 210.3],
+                'low': [200.1, 200.2, 200.3],
+                'close': [206.1, 206.2, 206.3],
+                'volume': [200000, 200001, 200002],
+                'day': days,
+            })
+        }
+
+    @classmethod
+    def make_reader_b_data(cls):
+        tds = cls.env.trading_days
+        days = tds[tds.slice_indexer('2016-03-25', '2016-03-30')].asi8
+        return {
+            1: DataFrame({
+                'open': [105.1, 105.2, 105.3],
+                'high': [110.1, 110.2, 110.3],
+                'low': [100.1, 100.2, 100.3],
+                'close': [106.1, 106.2, 106.3],
+                'volume': [100000, 100001, 100002],
+                'day': days,
+            }),
+            2: DataFrame({
+                'open': [205.1, 0, 205.3],
+                'high': [210.1, 0, 210.3],
+                'low': [200.1, 0, 200.3],
+                'close': [206.1, 0, 206.3],
+                'volume': [200000, 0, 200002],
+                'day': days,
+            })
+        }
+
+    def test_missing_in_b(self):
         expected = {
             self.asset_finder.retrieve_asset(2):
             ([Timestamp('2016-03-29', tz='UTC')], [200001], [0])
+        }
+        unpaired = self.daily_bar_comparison.unpaired(
+            self.TRADING_ENV_MIN_DATE,
+            self.TRADING_ENV_MAX_DATE,
+        )
+        self.assertEqual(expected, unpaired)
+
+
+class UnpairedDailyBarMissingInA(UnpairedDailyBarTestCase):
+
+    @classmethod
+    def make_reader_a_data(cls):
+        tds = cls.env.trading_days
+        days = tds[tds.slice_indexer('2016-03-25', '2016-03-30')].asi8
+        return {
+            1: DataFrame({
+                'open': [105.1, 105.2, 105.3],
+                'high': [110.1, 110.2, 110.3],
+                'low': [100.1, 100.2, 100.3],
+                'close':  [106.1, 106.2, 106.3],
+                'volume': [100000, 100001, 100002],
+                'day': days,
+            }),
+            2: DataFrame({
+                'open': [205.1, 0, 205.3],
+                'high': [210.1, 0, 210.3],
+                'low': [200.1, 0, 200.3],
+                'close': [206.1, 0, 206.3],
+                'volume': [200000, 0, 200002],
+                'day': days,
+            })
+        }
+
+    @classmethod
+    def make_reader_b_data(cls):
+        tds = cls.env.trading_days
+        days = tds[tds.slice_indexer('2016-03-25', '2016-03-30')].asi8
+        return {
+            1: DataFrame({
+                'open': [105.1, 105.2, 105.3],
+                'high': [110.1, 110.2, 110.3],
+                'low': [100.1, 100.2, 100.3],
+                'close': [106.1, 106.2, 106.3],
+                'volume': [100000, 100001, 100002],
+                'day': days,
+            }),
+            2: DataFrame({
+                'open': [205.1, 205.2, 205.3],
+                'high': [210.1, 210.2, 210.3],
+                'low': [200.1, 200.2, 200.3],
+                'close': [206.1, 206.2, 206.3],
+                'volume': [200000, 200001, 200002],
+                'day': days,
+            })
+        }
+
+    def test_missing_in_a(self):
+        expected = {
+            self.asset_finder.retrieve_asset(2):
+            ([Timestamp('2016-03-29', tz='UTC')], [0], [200001])
         }
         unpaired = self.daily_bar_comparison.unpaired(
             self.TRADING_ENV_MIN_DATE,

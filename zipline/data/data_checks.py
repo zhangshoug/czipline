@@ -16,40 +16,7 @@ from zipline.pipeline.data.equity_pricing import USEquityPricing
 Unpaired = namedtuple('Unpaired', ('dates', 'a', 'b'))
 
 
-class _Processed(object):
-
-    def __init__(self, rootdir):
-        self._processed_path = os.path.join(rootdir, 'processed.txt')
-        self._processed_append_fp = None
-        self._has_diff_path = os.path.join(rootdir, 'with_diff.txt')
-        self._has_diff_append_fp = None
-
-    def processed(self):
-        with open(self._processed_path, mode='r') as f:
-            self._processed = [int(x) for x in f.readlines()]
-        return self._processed
-
-    def has_diff(self):
-        with open(self._has_diff_path, mode='r') as f:
-            self._has_diff = [int(x) for x in f.readlines()]
-        return self._has_diff
-
-    def add_processed(self, sid):
-        if self._processed_append_fp is None:
-            self._processed_append_fp = open(self._processed_path, mode='ab')
-        self._processed_append_fp.write(str(sid))
-        self._processed_append_fp.write("\n")
-        self._processed_append_fp.flush()
-
-    def add_has_diff(self, sid):
-        if self._has_diff_append_fp is None:
-            self._has_diff_append_fp = open(self._has_diff_path, mode='ab')
-        self._has_diff_append_fp.write(str(sid))
-        self._has_diff_append_fp.write("\n")
-        self._has_diff_append_fp.flush()
-
-
-class DailyBarComparison(object):
+class UnpairedDailyBars(object):
 
     def __init__(self,
                  rootdir,

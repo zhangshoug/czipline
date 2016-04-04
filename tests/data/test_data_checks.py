@@ -10,7 +10,7 @@ from zipline.data.us_equity_pricing import (
     BcolzDailyBarWriter,
     OHLC,
 )
-from zipline.data.daily_bar_compare import DailyBarComparison
+from zipline.data.data_checks import DailyBarComparison
 
 
 from zipline.testing.fixtures import (

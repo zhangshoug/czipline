@@ -45,21 +45,21 @@ class UnpairedDailyBars(object):
     def unpaired(self, start_date, end_date, ignore_ipo=False):
         result = {}
         data_a = self.reader_a.load_raw_arrays(
-            [self.field], self.start_date, self.end_date, self.assets)[0]
+            [self.field], start_date, end_date, self.assets)[0]
         data_b = self.reader_b.load_raw_arrays(
-            [self.field], self.start_date, self.end_date, self.assets)[0]
-        start_loc = self.calendar.searchsorted(self.start_date)
+            [self.field], start_date, end_date, self.assets)[0]
+        start_loc = self.calendar.searchsorted(start_date)
         for i, asset in enumerate(self.assets):
-            if asset.start_date >= self.start_date:
+            if asset.start_date >= start_date:
                 if ignore_ipo:
                     asset_start_date = asset.start_date + self.calendar.freq
                 else:
                     asset_start_date = asset.start_date
             else:
-                asset_start_date = self.start_date
+                asset_start_date = start_date
             asset_start_loc = self.calendar.searchsorted(asset_start_date)
             asset_end_loc = self.calendar.searchsorted(min(asset.end_date,
-                                                           self.end_date))
+                                                           end_date))
             start = asset_start_loc - start_loc
             end = asset_end_loc - start_loc
             asset_data_a = data_a[start:end, i]
@@ -72,9 +72,8 @@ class UnpairedDailyBars(object):
 
                 days_where_diff = self.calendar[where_diff + asset_start_loc]
 
-                dates = [str(x).split()[0] for x in days_where_diff]
                 data = Unpaired(
-                    dates,
+                    days_where_diff,
                     asset_data_a[where_diff].tolist(),
                     asset_data_b[where_diff].tolist(),
                 )

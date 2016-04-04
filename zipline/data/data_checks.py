@@ -1,8 +1,6 @@
 #
 # Copyright 2016 Quantopian, Inc.
 #
-import click
-
 from collections import namedtuple
 import os
 
@@ -25,6 +23,7 @@ class UnpairedDailyBars(object):
                  reader_b,
                  start_date,
                  end_date,
+                 ignore_ipo=False,
                  assets=None):
         self.rootdir = rootdir
         self.calendar = calendar
@@ -33,6 +32,7 @@ class UnpairedDailyBars(object):
         self.reader_b = reader_b
         self.start_date = start_date
         self.end_date = end_date
+        self.ignore_ipo = ignore_ipo
         if assets is None:
             self.assets = sorted(asset_finder.retrieve_all(
                 asset_finder.group_by_type(asset_finder.sids)['equity']))
@@ -57,8 +57,14 @@ class UnpairedDailyBars(object):
             [self.field], self.start_date, self.end_date, self.assets)[0]
         start_loc = self.calendar.searchsorted(self.start_date)
         for i, asset in enumerate(self.assets):
-            asset_start_loc = self.calendar.searchsorted(
-                max(asset.start_date, self.start_date))
+            if asset.start_date >= self.start_date:
+                if self.ignore_ipo:
+                    start_date = asset.start_date + self.calendar.freq
+                else:
+                    start_date = asset.start_date
+            else:
+                start_date = self.start_date
+            asset_start_loc = self.calendar.searchsorted(start_date)
             asset_end_loc = self.calendar.searchsorted(min(asset.end_date,
                                                            self.end_date))
             start = asset_start_loc - start_loc

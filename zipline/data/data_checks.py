@@ -1,7 +1,7 @@
 #
 # Copyright 2016 Quantopian, Inc.
 #
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 import os
 
 import numpy as np
@@ -10,7 +10,26 @@ from numpy import where
 from zipline.pipeline.data.equity_pricing import USEquityPricing
 
 
-Unpaired = namedtuple('Unpaired', ('dates', 'a', 'b'))
+Unpaired = namedtuple('Unpaired', ('sid', 'date', 'a', 'b'))
+
+
+class UnpairedResult(object):
+
+    def __init__(self):
+        self.records = []
+        self.by_sid = OrderedDict()
+        self.by_date = OrderedDict()
+
+    def add_record(self, record):
+        self.records.append(record)
+        try:
+            self.by_sid[record.sid].append(record)
+        except KeyError:
+            self.by_sid[record.sid] = [record]
+        try:
+            self.by_date[record.date].append(record)
+        except KeyError:
+            self.by_date[record.date] = [record]
 
 
 class UnpairedDailyBars(object):
@@ -43,7 +62,7 @@ class UnpairedDailyBars(object):
             self.rootdir, "{0}.json".format(int(asset)))
 
     def unpaired(self, start_date, end_date, ignore_ipo=False):
-        result = {}
+        result = UnpairedResult()
         data_a = self.reader_a.load_raw_arrays(
             [self.field], start_date, end_date, self.assets)[0]
         data_b = self.reader_b.load_raw_arrays(
@@ -72,10 +91,10 @@ class UnpairedDailyBars(object):
 
                 days_where_diff = self.calendar[where_diff + asset_start_loc]
 
-                data = Unpaired(
-                    days_where_diff,
-                    asset_data_a[where_diff].tolist(),
-                    asset_data_b[where_diff].tolist(),
-                )
-                result[asset] = data
+                sid = int(asset)
+
+                for date, a, b in zip(days_where_diff,
+                                      asset_data_a[where_diff],
+                                      asset_data_b[where_diff]):
+                    result.add_record(Unpaired(sid, date, a, b))
         return result

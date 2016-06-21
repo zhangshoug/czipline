@@ -627,7 +627,17 @@ class HistoryWindowStartsBeforeData(ZiplineError):
     msg = (
         "History window extends before {first_trading_day}. To use this "
         "history window, start the backtest on or after {suggested_start_day}."
-        )
+    )
+    msg_without_suggestion = (
+        "History window extends before {first_trading_day}."
+    )
+
+    def __str__(self):
+        if self.kwargs['suggested_start_day']:
+            msg = self.msg.format(**self.kwargs)
+        else:
+            msg = self.msg_without_suggestion.format(**self.kwargs)
+        return msg
 
 
 class NonExistentAssetInTimeFrame(ZiplineError):

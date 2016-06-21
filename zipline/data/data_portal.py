@@ -1041,12 +1041,15 @@ class DataPortal(object):
         end_loc = tds.get_loc(end_date)
         start_loc = end_loc - bar_count + 1
         if start_loc < self._first_trading_day_loc:
+            try:
+                suggested_start_day = tds[
+                    self._first_trading_day_loc + bar_count].date()
+            except IndexError:
+                suggested_start_day = None
             raise HistoryWindowStartsBeforeData(
                 first_trading_day=self._first_trading_day.date(),
                 bar_count=bar_count,
-                suggested_start_day=tds[
-                    self._first_trading_day_loc + bar_count
-                ].date(),
+                suggested_start_day=suggested_start_day
             )
         return tds[start_loc:end_loc + 1]
 
@@ -1189,16 +1192,19 @@ class DataPortal(object):
             return daily_data
 
     def _handle_history_out_of_bounds(self, bar_count):
-        suggested_start_day = (
-            self.trading_schedule.all_execution_minutes[
-                self._first_trading_minute_loc + bar_count
-            ] + self.trading_schedule.day
-        ).date()
+        try:
+            suggested_start_day = (
+                self.trading_schedule.all_execution_minutes[
+                    self._first_trading_minute_loc + bar_count
+                ] + self.trading_schedule.day
+            ).date()
+        except IndexError:
+            suggested_start_day = None
 
         raise HistoryWindowStartsBeforeData(
             first_trading_day=self._first_trading_day.date(),
             bar_count=bar_count,
-            suggested_start_day=suggested_start_day,
+            suggested_start_day=suggested_start_day
         )
 
     def _get_history_minute_window(self, assets, end_dt, bar_count,

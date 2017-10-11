@@ -1,0 +1,55 @@
+{% set name = "requests-ftp" %}
+{% set version = "0.3.1" %}
+{% set file_ext = "tar.gz" %}
+{% set hash_type = "sha256" %}
+{% set hash_value = "7504ceb5cba8a5c0135ed738596820a78c5f2be92d79b29f96ba99b183d8057a" %}
+
+package:
+  name: '{{ name|lower }}'
+  version: '{{ version }}'
+
+source:
+  fn: '{{ name }}-{{ version }}.{{ file_ext }}'
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.{{ file_ext }}
+  '{{ hash_type }}': '{{ hash_value }}'
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - requests
+  run:
+    - python
+    - requests
+
+test:
+  imports:
+    - requests_ftp
+
+about:
+  home: http://github.com/Lukasa/requests-ftp
+  license: Apache Software License
+  license_family: APACHE
+  license_file: ''
+  summary: FTP Transport Adapter for Requests.
+  description: "Requests-FTP\n============\n\nRequests-FTP is an implementation of a very stupid FTP transport adapter for\nuse with the awesome `Requests`_ Python library.\n\nThis library is *not* intended\
+    \ to be an example of Transport Adapters best\npractices. This library was cowboyed together in about 4 hours of total work,\nhas no tests, and relies on a few ugly hacks. Instead, it is intended as\
+    \ both\na starting point for future development and a useful example for how to\nimplement transport adapters.\n\nHere's how you use it:\n\n.. code-block:: pycon\n\n    >>> import requests\n    >>>\
+    \ import requests_ftp\n    >>> requests_ftp.monkeypatch_session()\n    >>> s = requests.Session()\n    >>> resp = s.list('ftp://127.0.0.1/', auth=('Lukasa', 'notmypass'))\n    >>> resp.status_code\n\
+    \    '226'\n    >>> print resp.content\n    ...snip...\n    >>> resp = s.stor('ftp://127.0.0.1/test.txt', auth=('Lukasa', 'notmypass'),\n                       files={'file': open('report.txt', 'rb')})\n\
+    \n\nFeatures\n--------\n\nAlmost none!\n\n- Adds the FTP LIST, STOR, RETR and NLST verbs via a new FTP transport adapter.\n- Provides a function that monkeypatches the Requests Session object, exposing\n\
+    \  helper methods much like the current ``Session.get()`` and ``Session.post()``\n  methods.\n- Piggybacks on standard Requests idioms: uses normal Requests models and\n  access methods, including the\
+    \ tuple form of authentication.\n\nDoes not provide:\n\n- Connection pooling! One new connection and multiple commands for each\n  request, including authentication. **Super** inefficient.\n- SFTP.\
+    \ Security is for the weak.\n- Less common commands.\n\nImportant Notes\n---------------\n\nMany corners have been cut in my rush to get this code finished. The most\nobvious problem is that this code\
+    \ does not have *any* tests. This is my highest\npriority for fixing.\n\nMore notably, we have the following important caveats:\n\n- The design of the Requests Transport Adapater means that the STOR\
+    \ method\n  has to un-encode a multipart form-data encoded body to get the file. This is\n  painful, and I haven't tested this thoroughly, so it might not work.\n- **Massive** assumptions have been\
+    \ made in the use of the STOR method. This\n  code assumes that there will only be one file included in the files argument.\n  It also requires that you provide the filename to save as as part of the\
+    \ URL.\n  This is single-handedly the most brittle part of this adapter.\n- This code is not optimised for performance AT ALL. There is some low-hanging\n  fruit here: we should be able to connection\
+    \ pool relatively easily, and we\n  can probably avoid making some of the requests we do.\n\nContributing\n------------\n\nPlease do! I would love for this to be developed further by anyone who is\n\
+    interested. Wherever possible, please provide unit tests for your work (yes,\nthis is very much a 'do as I say, not as I do' kind of moment). Don't forget\nto add your name to AUTHORS.\n\nLicense\n\
+    -------\n\nTo maximise compatibility with Requests, this code is licensed under the Apache\nlicense. See LICENSE for more details.\n\n.. _`Requests`: https://github.com/kennethreitz/requests"
+  doc_url: ''
+  dev_url: ''
+
+extra:
+  recipe-maintainers: ''

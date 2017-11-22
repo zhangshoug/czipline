@@ -24,6 +24,7 @@ from os.path import (
     join,
 )
 from distutils.version import StrictVersion
+from functools import partial
 from setuptools import (
     Extension,
     find_packages,
@@ -33,49 +34,76 @@ from setuptools import (
 import versioneer
 
 
-def window_specialization(typename):
-    """Make an extension for an AdjustedArrayWindow specialization."""
-    return Extension(
-        'zipline.lib._{name}window'.format(name=typename),
-        ['zipline/lib/_{name}window.pyx'.format(name=typename)],
-        depends=['zipline/lib/_windowtemplate.pxi'],
-    )
+conda_build = os.path.basename(sys.argv[0]) in ('conda-build',  # unix
+                                                'conda-build-script.py')  # win
 
+if conda_build:
+    # If conda-build is running this, then we're currently expanding the jinja
+    # template in conda/zipline/meta.yaml, not actually installing. We don't
+    # have numpy or Cython yet, but luckily we only need the names from
+    # install_requires and build_requires.
+    ext_modules = []
+else:
+    try:
+        import Cython  # noqa
+    except ImportError:
+        raise Exception("Install Cython before zipline.")
 
-ext_modules = [
-    Extension('zipline.assets._assets', ['zipline/assets/_assets.pyx']),
-    Extension('zipline.assets.continuous_futures',
-              ['zipline/assets/continuous_futures.pyx']),
-    Extension('zipline.lib.adjustment', ['zipline/lib/adjustment.pyx']),
-    Extension('zipline.lib._factorize', ['zipline/lib/_factorize.pyx']),
-    window_specialization('float64'),
-    window_specialization('int64'),
-    window_specialization('int64'),
-    window_specialization('uint8'),
-    window_specialization('label'),
-    Extension('zipline.lib.rank', ['zipline/lib/rank.pyx']),
-    Extension('zipline.data._equities', ['zipline/data/_equities.pyx']),
-    Extension('zipline.data._adjustments', ['zipline/data/_adjustments.pyx']),
-    Extension('zipline._protocol', ['zipline/_protocol.pyx']),
-    Extension('zipline.gens.sim_engine', ['zipline/gens/sim_engine.pyx']),
-    Extension(
-        'zipline.data._minute_bar_internal',
-        ['zipline/data/_minute_bar_internal.pyx']
-    ),
-    Extension(
-        'zipline.utils.calendars._calendar_helpers',
-        ['zipline/utils/calendars/_calendar_helpers.pyx']
-    ),
-    Extension(
-        'zipline.data._resample',
-        ['zipline/data/_resample.pyx']
-    ),
-    Extension(
-        'zipline.pipeline.loaders.blaze._core',
-        ['zipline/pipeline/loaders/blaze/_core.pyx'],
-        depends=['zipline/lib/adjustment.pxd'],
-    ),
-]
+    try:
+        import numpy as np
+    except ImportError:
+        raise Exception("Install numpy before zipline.")
+
+    NumpyExtension = partial(Extension, include_dirs=[np.get_include()])
+
+    def window_specialization(typename):
+        """Make an extension for an AdjustedArrayWindow specialization."""
+        return NumpyExtension(
+            'zipline.lib._{name}window'.format(name=typename),
+            ['zipline/lib/_{name}window.pyx'.format(name=typename)],
+            depends=['zipline/lib/_windowtemplate.pxi'],
+        )
+
+    ext_modules = [
+        NumpyExtension('zipline.assets._assets',
+                       ['zipline/assets/_assets.pyx']),
+        NumpyExtension('zipline.assets.continuous_futures',
+                       ['zipline/assets/continuous_futures.pyx']),
+        NumpyExtension('zipline.lib.adjustment',
+                       ['zipline/lib/adjustment.pyx']),
+        NumpyExtension('zipline.lib._factorize',
+                       ['zipline/lib/_factorize.pyx']),
+        window_specialization('float64'),
+        window_specialization('int64'),
+        window_specialization('int64'),
+        window_specialization('uint8'),
+        window_specialization('label'),
+        NumpyExtension('zipline.lib.rank', ['zipline/lib/rank.pyx']),
+        NumpyExtension('zipline.data._equities',
+                       ['zipline/data/_equities.pyx']),
+        NumpyExtension('zipline.data._adjustments',
+                       ['zipline/data/_adjustments.pyx']),
+        Extension('zipline._protocol', ['zipline/_protocol.pyx']),
+        NumpyExtension('zipline.gens.sim_engine',
+                       ['zipline/gens/sim_engine.pyx']),
+        NumpyExtension(
+            'zipline.data._minute_bar_internal',
+            ['zipline/data/_minute_bar_internal.pyx']
+        ),
+        NumpyExtension(
+            'zipline.utils.calendars._calendar_helpers',
+            ['zipline/utils/calendars/_calendar_helpers.pyx']
+        ),
+        NumpyExtension(
+            'zipline.data._resample',
+            ['zipline/data/_resample.pyx']
+        ),
+        NumpyExtension(
+            'zipline.pipeline.loaders.blaze._core',
+            ['zipline/pipeline/loaders/blaze/_core.pyx'],
+            depends=['zipline/lib/adjustment.pxd'],
+        ),
+    ]
 
 
 STR_TO_CMP = {
@@ -224,9 +252,6 @@ def setup_requirements(requirements_path, module_names, strict_bounds,
         )
     return module_lines
 
-
-conda_build = os.path.basename(sys.argv[0]) in ('conda-build',  # unix
-                                                'conda-build-script.py')  # win
 
 setup_requires = setup_requirements(
     'etc/requirements.txt',

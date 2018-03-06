@@ -103,6 +103,6 @@ test_script:
   - nosetests -e zipline.utils.numpy_utils
   - flake8 zipline tests
 
-branches:
-  only:
-    - master
+#branches:
+#  only:
+#    - master

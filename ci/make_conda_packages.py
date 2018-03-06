@@ -52,7 +52,8 @@ def main(env, do_upload):
         if do_upload:
             if output and os.path.exists(output):
                 cmd = ["anaconda", "-t", env['ANACONDA_TOKEN'],
-                       "upload", output, "-u", "quantopian", "--label", "pandas_upgrade"]
+                       "upload", output, "-u", "quantopian", "--label", "pandas_upgrade",
+                       "--force"]
 
                 for line in iter_stdout(cmd):
                     print(line)

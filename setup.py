@@ -279,7 +279,7 @@ conda_build = os.path.basename(sys.argv[0]) in ('conda-build',  # unix
 
 setup_requires = setup_requirements(
     'etc/requirements.txt',
-    ('Cython', 'numpy') if not conda_build else ('Cython', 'numpy', 'pandas'),
+    ('Cython', 'numpy'),
     strict_bounds=conda_build,
     conda_format=conda_build,
 )

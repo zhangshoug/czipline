@@ -38,7 +38,7 @@ before_install:
   - sed -i "s/numpy==.*/numpy==$NUMPY_VERSION/" etc/requirements.txt
   - sed -i "s/pandas==.*/pandas==$PANDAS_VERSION/" etc/requirements.txt
   - sed -i "s/scipy==.*/scipy==$SCIPY_VERSION/" etc/requirements.txt
-  - if [ -n $PANDAS_DATAREADER_VERSION ]; then sed -i "s/pandas-datareader==.*/pandas-datareader==$PANDAS_DATAREADER_VERSION/" etc/requirements.txt; fi
+  - if [ -n "$PANDAS_DATAREADER_VERSION" ]; then sed -i "s/pandas-datareader==.*/pandas-datareader==$PANDAS_DATAREADER_VERSION/" etc/requirements.txt; fi
   - cat etc/requirements.txt
 install:
   - conda info -a

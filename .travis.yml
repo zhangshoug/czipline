@@ -39,7 +39,7 @@ before_install:
   - sed -i "s/pandas==.*/pandas==$PANDAS_VERSION/" etc/requirements.txt
   - sed -i "s/scipy==.*/scipy==$SCIPY_VERSION/" etc/requirements.txt
   - if [ -n "$PANDAS_DATAREADER_VERSION" ]; then sed -i "s/pandas-datareader==.*/pandas-datareader==$PANDAS_DATAREADER_VERSION/" etc/requirements.txt; fi
-  - if [ -n "$DASK_VERSION" ]; then sed -i "s/dask[dataframe]==.*/data[dataframe]==$DASK_VERSION/" etc/requirements_blaze.txt; fi
+  - if [ -n "$DASK_VERSION" ]; then sed -i "s/dask\[dataframe\]==.*/data\[dataframe\]==$DASK_VERSION/" etc/requirements_blaze.txt; fi
   - cat etc/requirements.txt
 install:
   - conda info -a

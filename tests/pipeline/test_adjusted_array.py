@@ -2,6 +2,7 @@
 Tests for chunked adjustments.
 """
 from collections import namedtuple
+from distutils.version import StrictVersion
 from itertools import chain, product
 from textwrap import dedent
 from unittest import TestCase
@@ -38,6 +39,7 @@ from zipline.utils.numpy_utils import (
     float64_dtype,
     int64_dtype,
     object_dtype,
+    numpy_version,
 )
 
 
@@ -689,21 +691,39 @@ class AdjustedArrayTestCase(TestCase):
             float('nan'),
         )
 
-        expected = dedent(
-            """\
-            Adjusted Array (float64):
+        if numpy_version < StrictVersion('1.12'):
+            expected = dedent(
+                """\
+                Adjusted Array (float64):
 
-            Data:
-            array([[  0.,   1.,   2.],
-                   [  3.,   4.,   5.],
-                   [  6.,   7.,   8.],
-                   [  9.,  10.,  11.],
-                   [ 12.,  13.,  14.]])
+                Data:
+                array([[  0.,   1.,   2.],
+                       [  3.,   4.,   5.],
+                       [  6.,   7.,   8.],
+                       [  9.,  10.,  11.],
+                       [ 12.,  13.,  14.]])
 
-            Adjustments:
-            {4: [Float64Multiply(first_row=2, last_row=3, first_col=0, \
+                Adjustments:
+                {4: [Float64Multiply(first_row=2, last_row=3, first_col=0, \
 last_col=0, value=4.000000)]}
-            """
-        )
+                """
+            )
+        else:
+            expected = dedent(
+                """\
+                Adjusted Array (float64):
+
+                Data:
+                array([[ 0.,  1.,  2.],
+                       [ 3.,  4.,  5.],
+                       [ 6.,  7.,  8.],
+                       [ 9., 10., 11.],
+                       [12., 13., 14.]])
+
+                Adjustments:
+                {4: [Float64Multiply(first_row=2, last_row=3, first_col=0, \
+last_col=0, value=4.000000)]}
+                """
+            )
         got = adj_array.inspect()
         self.assertEqual(expected, got)

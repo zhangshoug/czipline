@@ -782,7 +782,6 @@ class BlazeToPipelineTestCase(WithAssetFinder, ZiplineTestCase):
             result.sort_index(axis=1),
             _utc_localize_index_level_0(expected.sort_index(axis=1)),
             check_dtype=False,
-            check_categorical=False,
         )
 
     def _test_id_macro(self, df, dshape, expected, finder, add, dates=None):

@@ -45,7 +45,7 @@ from pandas import (
     to_datetime,
     Timestamp,
 )
-from pandas.tslib import iNaT
+from pandas._libs import iNaT
 from six import (
     iteritems,
     string_types,

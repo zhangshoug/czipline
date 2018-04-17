@@ -1,0 +1,11 @@
+# A股数据工具包
+git+https://github.com/liudengfeng/csd#egg=csd
+
+# blaze(三部分，其中odo与blaze因networkx使用版本2.1,有小幅度改动)
+datashape>=0.5.2
+
+# odo
+git+https://github.com/liudengfeng/odo#egg=odo
+
+git+https://github.com/liudengfeng/blaze#egg=blaze
+

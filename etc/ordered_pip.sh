@@ -9,4 +9,4 @@ do
         ((a = a + 1))
     fi
 done < $1
-echo "$0: Final package count is $a";
+echo "$0: 最终包数量：$a";

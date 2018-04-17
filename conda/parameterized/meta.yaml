@@ -81,10 +81,10 @@ about:
     \ b, expected):\n        \"\"\" Test addition. \"\"\"\n        assert_equal(a + b, expected)\n\n    def my_doc_func(func, num, param):\n        return \"%s: %s with %s\" %(num, func.__name__, param)\n\
     \n    @parameterized([\n        (5, 4, 1),\n        (9, 6, 3),\n    ], doc_func=my_doc_func)\n    def test_subtraction(a, b, expected):\n        assert_equal(a - b, expected)\n\n::\n\n    $ nosetests\
     \ example.py\n    Test addition. [with a=1, b=2, expected=3] ... ok\n    Test addition. [with a=4, b=5, expected=9] ... ok\n    0: test_subtraction with param(*(5, 4, 1)) ... ok\n    1: test_subtraction\
-    \ with param(*(9, 6, 3)) ... ok\n\n    ----------------------------------------------------------------------\n    Ran 4 tests in 0.001s\n\n    OK\n\n\nMigrating from ``nose-parameterized`` to ``parameterized``\n\
-    ----------------------------------------------------------\n\nTo migrate a codebase from ``nose-parameterized`` to ``parameterized``:\n\n1. Update your requirements file, replacing ``nose-parameterized``\
+    \ with param(*(9, 6, 3)) ... ok\n\n    ----------------------------------------------------------------------\n    Ran 4 tests in 0.001s\n\n    OK\n\n\nMigrating from ``parameterized`` to ``parameterized``\n\
+    ----------------------------------------------------------\n\nTo migrate a codebase from ``parameterized`` to ``parameterized``:\n\n1. Update your requirements file, replacing ``parameterized``\
     \ with\n   ``parameterized``.\n\n2. Replace all references to ``nose_parameterized`` with ``parameterized``::\n\n    $ perl -pi -e 's/nose_parameterized/parameterized/g' your-codebase/\n\n3. You're\
-    \ done!\n\n\nFAQ\n---\n\nWhat happened to ``nose-parameterized``?\n    Originally only nose was supported. But now everything is supported, and it\n    only made sense to change the name!\n\nWhat do\
+    \ done!\n\n\nFAQ\n---\n\nWhat happened to ``parameterized``?\n    Originally only nose was supported. But now everything is supported, and it\n    only made sense to change the name!\n\nWhat do\
     \ you mean when you say \"nose is best supported\"?\n    There are small caveates with ``py.test`` and ``unittest``: ``py.test``\n    does not show the parameter values (ex, it will show ``test_add[0]``\n\
     \    instead of ``test_add[1, 2, 3]``), and ``unittest``/``unittest2`` do not\n    support test generators so ``@parameterized.expand`` must be used.\n\nWhy not use ``@pytest.mark.parametrize``?\n \
     \   Because spelling is difficult. Also, ``parameterized`` doesn't require you\n    to repeat argument names, and (using ``param``) it supports optional\n    keyword arguments.\n\nWhy do I get an ``AttributeError:\

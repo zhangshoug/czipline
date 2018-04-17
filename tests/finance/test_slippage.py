@@ -21,7 +21,7 @@ import datetime
 from math import sqrt
 
 from nose_parameterized import parameterized
-from pandas.tslib import normalize_date
+from pandas.core.tools.datetimes import normalize_date
 import numpy as np
 import pandas as pd
 import pytz

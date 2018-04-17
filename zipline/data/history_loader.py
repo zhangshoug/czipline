@@ -21,7 +21,7 @@ from abc import (
 from numpy import concatenate
 from lru import LRU
 from pandas import isnull
-from pandas.tslib import normalize_date
+from pandas.core.tools.datetimes import normalize_date
 from toolz import sliding_window
 
 from six import with_metaclass

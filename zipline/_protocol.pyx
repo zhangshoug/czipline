@@ -16,7 +16,7 @@ import warnings
 from contextlib import contextmanager
 from functools import wraps
 
-from pandas.tslib import normalize_date
+from pandas.core.tools.datetimes import normalize_date
 import pandas as pd
 import numpy as np
 

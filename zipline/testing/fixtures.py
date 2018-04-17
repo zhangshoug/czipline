@@ -3,7 +3,7 @@ import sqlite3
 from unittest import TestCase
 import warnings
 
-from contextlib2 import ExitStack
+from contextlib import ExitStack
 from logbook import NullHandler, Logger
 from six import with_metaclass, iteritems
 from toolz import flip, merge

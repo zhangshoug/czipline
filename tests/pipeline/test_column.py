@@ -1,7 +1,7 @@
 """
 Tests BoundColumn attributes and methods.
 """
-from contextlib2 import ExitStack
+from contextlib import ExitStack
 from unittest import TestCase
 
 from pandas import date_range, DataFrame

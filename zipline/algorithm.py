@@ -20,7 +20,7 @@ from datetime import tzinfo, time
 import logbook
 import pytz
 import pandas as pd
-from contextlib2 import ExitStack
+from contextlib import ExitStack
 from pandas.tseries.tools import normalize_date
 import numpy as np
 

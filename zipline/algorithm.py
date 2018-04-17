@@ -21,7 +21,7 @@ import logbook
 import pytz
 import pandas as pd
 from contextlib import ExitStack
-from pandas.tseries.tools import normalize_date
+from pandas.core.tools.datetimes import normalize_date
 import numpy as np
 
 from itertools import chain, repeat

@@ -27,7 +27,7 @@ from pandas import (
     Series,
     Timestamp,
 )
-from pandas.tseries.tools import normalize_date
+from pandas.core.tools.datetimes import normalize_date
 from six import iteritems, itervalues
 
 from zipline.algorithm import TradingAlgorithm

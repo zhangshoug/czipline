@@ -15,7 +15,7 @@
 from sys import maxsize
 import re
 
-from nose_parameterized import parameterized
+from parameterized import parameterized
 from numpy import (
     arange,
     datetime64,

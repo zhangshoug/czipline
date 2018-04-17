@@ -1,7 +1,7 @@
 from datetime import timedelta
 from textwrap import dedent
 
-from nose_parameterized import parameterized
+from parameterized import parameterized
 from pandas import DataFrame
 
 from zipline import TradingAlgorithm

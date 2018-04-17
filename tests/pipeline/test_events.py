@@ -6,7 +6,7 @@ import itertools
 from itertools import product
 
 import blaze as bz
-from nose_parameterized import parameterized
+from parameterized import parameterized
 import numpy as np
 import pandas as pd
 

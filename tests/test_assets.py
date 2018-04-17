@@ -27,7 +27,7 @@ from unittest import TestCase
 import uuid
 import warnings
 
-from nose_parameterized import parameterized
+from parameterized import parameterized
 from numpy import full, int32, int64
 import pandas as pd
 from pandas.util.testing import assert_frame_equal

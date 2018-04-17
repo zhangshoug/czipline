@@ -6,7 +6,7 @@ from collections import OrderedDict
 from itertools import product
 from operator import add, sub
 
-from nose_parameterized import parameterized
+from parameterized import parameterized
 from numpy import (
     arange,
     array,

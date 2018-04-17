@@ -17,7 +17,7 @@ from datetime import time
 import pandas as pd
 from mock import patch
 
-from nose_parameterized import parameterized
+from parameterized import parameterized
 from six.moves import range
 from zipline import TradingAlgorithm
 from zipline.gens.sim_engine import BEFORE_TRADING_START_BAR

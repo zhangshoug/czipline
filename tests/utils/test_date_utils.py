@@ -1,5 +1,5 @@
 from pandas import Timestamp
-from nose_parameterized import parameterized
+from parameterized import parameterized
 
 from zipline.testing import ZiplineTestCase
 from zipline.utils.calendars import get_calendar

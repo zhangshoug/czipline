@@ -271,9 +271,8 @@ def categorical_df_concat(df_list, inplace=False):
 
 def days_at_time(days, t, tz, day_offset=0):
     """
-    Create an index of days at time ``t``, interpreted in timezone ``tz``.
-
-    The returned index is localized to UTC.
+    在时间``t``创建一个`days`索引，在时区``tz``中解释。
+    返回的索引已本地化为UTC。
 
     Parameters
     ----------
@@ -288,10 +287,8 @@ def days_at_time(days, t, tz, day_offset=0):
 
     Examples
     --------
-    In the example below, the times switch from 13:45 to 12:45 UTC because
-    March 13th is the daylight savings transition for US/Eastern.  All the
-    times are still 8:45 when interpreted in US/Eastern.
-
+    在下面的例子中，时区为"美国/东部"的日期，由于3月13日开始夏时转换，因此UTC时间从13:45
+    切换到12:45 UTC。在美国/东部解释时，所有时间仍然是8:45。
     >>> import pandas as pd; import datetime; import pprint
     >>> dts = pd.date_range('2016-03-12', '2016-03-14')
     >>> dts_at_845 = days_at_time(dts, datetime.time(8, 45), 'US/Eastern')

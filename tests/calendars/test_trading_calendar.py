@@ -128,6 +128,7 @@ class CalendarRegistrationTestCase(TestCase):
 
 class DefaultsTestCase(TestCase):
     def test_default_calendars(self):
+        # concat 连接迭代
         for name in concat([_default_calendar_factories,
                             _default_calendar_aliases]):
             self.assertIsNotNone(get_calendar(name),
@@ -359,6 +360,7 @@ class ExchangeCalendarTestBase(object):
                 )
 
     def test_minute_to_session_label(self):
+        # 按行循环开盘与收盘时间表
         for idx, info in enumerate(self.answers[1:-2].iterrows()):
             session_label = info[1].name
             open_minute = info[1].iloc[0]
@@ -453,10 +455,17 @@ class ExchangeCalendarTestBase(object):
         (2, 1),
     ])
     def test_minute_index_to_session_labels(self, interval, offset):
-        minutes = self.calendar.minutes_for_sessions_in_range(
-            pd.Timestamp('2011-01-04', tz='UTC'),
-            pd.Timestamp('2011-04-04', tz='UTC'),
-        )
+        if self.answer_key_filename.upper() == 'SZSH':
+            # 更改为A股有效交易日期，而非假日期间，确保测试正常运行
+            minutes = self.calendar.minutes_for_sessions_in_range(
+                pd.Timestamp('2016-01-04', tz='UTC'),
+                pd.Timestamp('2016-01-07', tz='UTC'),
+            )
+        else:
+            minutes = self.calendar.minutes_for_sessions_in_range(
+                pd.Timestamp('2011-01-04', tz='UTC'),
+                pd.Timestamp('2011-04-04', tz='UTC'),
+            )                        
         minutes = minutes[range(offset, len(minutes), interval)]
 
         np.testing.assert_array_equal(

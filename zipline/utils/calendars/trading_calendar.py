@@ -15,7 +15,7 @@
 from abc import ABCMeta, abstractproperty
 from lru import LRU
 import warnings
-
+from datetime import time
 from pandas.tseries.holiday import AbstractHolidayCalendar
 from six import with_metaclass
 from numpy import searchsorted
@@ -54,21 +54,21 @@ MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY = range(7)
 
 class TradingCalendar(with_metaclass(ABCMeta)):
     """
-    An TradingCalendar represents the timing information of a single market
-    exchange.
+    TradingCalendar代表单个市场交易所的时间信息。
 
-    The timing information is made up of two parts: sessions, and opens/closes.
+    时间信息由两部分组成：会话和开盘/收盘。
 
-    A session represents a contiguous set of minutes, and has a label that is
-    midnight UTC. It is important to note that a session label should not be
-    considered a specific point in time, and that midnight UTC is just being
-    used for convenience.
+    会话表示一组连续的分钟，外加一个UTC午夜标签。 需要注意的是，会话标签不应被视为特定的时
+    间点，使用UTC午夜时间纯粹是出于便利的考虑。
 
-    For each session, we store the open and close time in UTC time.
+    对于每个会话，我们存储UTC时间的开盘和收盘时间。
     """
-    def __init__(self, start=start_default, end=end_default):
-        # Midnight in UTC for each trading day.
 
+    use_lunch_break = False  # 标记对象是否使用午休时间
+
+    def __init__(self, start=start_default, end=end_default):
+        # 每个交易日UTC的午夜
+        # self.use_lunch_break = lunch_break  # 标记对象是否使用午休时间
         # In pandas 0.18.1, pandas calls into its own code here in a way that
         # fires a warning. The calling code in pandas tries to suppress the
         # warning, but does so incorrectly, causing it to bubble out here.
@@ -77,18 +77,18 @@ class TradingCalendar(with_metaclass(ABCMeta)):
             warnings.simplefilter('ignore')
             _all_days = date_range(start, end, freq=self.day, tz='UTC')
 
-        # `DatetimeIndex`s of standard opens/closes for each day.
+        # 每天标准的开盘和收盘`DatetimeIndex`
         self._opens = days_at_time(_all_days, self.open_time, self.tz,
                                    self.open_offset)
         self._closes = days_at_time(
             _all_days, self.close_time, self.tz, self.close_offset
         )
 
-        # `DatetimeIndex`s of nonstandard opens/closes
+        # 每天非标准的开盘和收盘`DatetimeIndex`
         _special_opens = self._calculate_special_opens(start, end)
         _special_closes = self._calculate_special_closes(start, end)
 
-        # Overwrite the special opens and closes on top of the standard ones.
+        # 在标准集的基础上，重写特殊开盘与收盘
         _overwrite_special_dates(_all_days, self._opens, _special_opens)
         _overwrite_special_dates(_all_days, self._closes, _special_closes)
 
@@ -105,18 +105,17 @@ class TradingCalendar(with_metaclass(ABCMeta)):
             dtype='datetime64[ns]',
         )
 
-        # Simple cache to avoid recalculating the same minute -> session in
-        # "next" mode. Analysis of current zipline code paths show that
-        # `minute_to_session_label` is often called consecutively with the same
-        # inputs.
+        # 简单缓存以避免在“下一个”模式下重新计算相同的分钟 - >会话。
+        # 对当前zipline代码路径的分析显示，连续调用函数`minute_to_session_label`通常使用相
+        # 同的输入。
         self._minute_to_session_label_cache = LRU(1)
-
+        # 转化为纳秒整数
         self.market_opens_nanos = self.schedule.market_open.values.\
             astype(np.int64)
 
         self.market_closes_nanos = self.schedule.market_close.values.\
             astype(np.int64)
-
+        # 所有交易分钟(纳秒整数)
         self._trading_minutes_nanos = self.all_minutes.values.\
             astype(np.int64)
 
@@ -130,8 +129,8 @@ class TradingCalendar(with_metaclass(ABCMeta)):
     @lazyval
     def day(self):
         return CustomBusinessDay(
-            holidays=self.adhoc_holidays,
-            calendar=self.regular_holidays,
+            holidays=self.adhoc_holidays,    # 特别假期
+            calendar=self.regular_holidays,  # 常规假期
         )
 
     @abstractproperty
@@ -149,6 +148,24 @@ class TradingCalendar(with_metaclass(ABCMeta)):
     @abstractproperty
     def close_time(self):
         raise NotImplementedError()
+
+    @property
+    def lunch_break_start_time(self):
+        """
+        如果使用午休间隔，必须重写该属性。使用实际午休开始时间
+
+        使用该默认值，即表示所有日期内的分钟都有效。
+        """
+        return time(23, 99)
+
+    @property
+    def lunch_break_end_time(self):
+        """
+        如果使用午休间隔，必须重写该属性。使用实际午休结束时间
+
+        使用该默认值，即表示所有日期内的分钟都有效。
+        """
+        return time(0, 0)
 
     @property
     def open_offset(self):
@@ -253,43 +270,47 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def is_session(self, dt):
         """
-        Given a dt, returns whether it's a valid session label.
+        给定一个dt，返回它是否是有效的会话标签(请注意会话标签是午夜时分)。
 
         Parameters
         ----------
         dt: pd.Timestamp
-            The dt that is being tested.
+            将要测试的dt           
+        Notes
+        -----
+        1. 如dt为日期，且在交易日历内，返回真；
+        2. 如dt带时间，只有午夜时分才为真；
+        3. 如带时区，为UTC或者None,返回真；
 
         Returns
         -------
         bool
-            Whether the given dt is a valid session label.
+            给定的dt是否是有效的会话标签
         """
         return dt in self.schedule.index
 
     def is_open_on_minute(self, dt):
         """
-        Given a dt, return whether this exchange is open at the given dt.
+        给定一个dt，返回此时交易所是否已经开盘
 
         Parameters
         ----------
         dt: pd.Timestamp
-            The dt for which to check if this exchange is open.
+            用于检查交易所是否已经开盘的dt。
 
         Returns
         -------
         bool
-            Whether the exchange is open on this dt.
+            在此时点(dt)交易是否开盘
         """
         return is_open(self.market_opens_nanos, self.market_closes_nanos,
                        dt.value)
 
     def next_open(self, dt):
         """
-        Given a dt, returns the next open.
+        给定一个dt，返回下一个开盘时点
 
-        If the given dt happens to be a session open, the next session's open
-        will be returned.
+        即使给定的dt恰好是会话开盘时点，也会返回下一个会话的开盘点。
 
         Parameters
         ----------
@@ -306,7 +327,7 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def next_close(self, dt):
         """
-        Given a dt, returns the next close.
+        给定一个dt，返回下一个收盘时点
 
         Parameters
         ----------
@@ -323,7 +344,7 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def previous_open(self, dt):
         """
-        Given a dt, returns the previous open.
+        给定一个dt，返回上一个开盘时点
 
         Parameters
         ----------
@@ -340,7 +361,7 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def previous_close(self, dt):
         """
-        Given a dt, returns the previous close.
+        给定一个dt，返回上一个收盘时点
 
         Parameters
         ----------
@@ -357,8 +378,8 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def next_minute(self, dt):
         """
-        Given a dt, return the next exchange minute.  If the given dt is not
-        an exchange minute, returns the next exchange open.
+        给定一个dt，返回下一个交易所在分钟。 如果给定的dt不是交易时点，则返回下一个开盘时点。
+        如dt在午休时段，则会返回下一个交易分钟，即下午开盘时间。
 
         Parameters
         ----------
@@ -375,9 +396,9 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def previous_minute(self, dt):
         """
-        Given a dt, return the previous exchange minute.
-
-        Raises KeyError if the given timestamp is not an exchange minute.
+        给点dt，返回上一个交易分钟
+        如为非交易分钟，触发KeyError异常(原文)
+        其实，只有当dt处于初始化对象时的开始及结束日期外，才会触发ValueError
 
         Parameters
         ----------
@@ -395,7 +416,12 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def next_session_label(self, session_label):
         """
-        Given a session label, returns the label of the next session.
+        给定一个会话标签，返回下一个会话的标签。
+
+        Notes
+        -----
+        session_label要么为日期，要么normalize,且须为交易日期
+        非交易日，或在start与end外，均会触发KeyError异常
 
         Parameters
         ----------
@@ -424,7 +450,7 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def previous_session_label(self, session_label):
         """
-        Given a session label, returns the label of the previous session.
+        给定一个会话标签，返回上一个会话的标签。
 
         Parameters
         ----------
@@ -450,7 +476,7 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def minutes_for_session(self, session_label):
         """
-        Given a session label, return the minutes for that session.
+        给定会话标签，返回该会话的所有分钟。
 
         Parameters
         ----------
@@ -469,7 +495,7 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def execution_minutes_for_session(self, session_label):
         """
-        Given a session label, return the execution minutes for that session.
+        给定会话标签，返回该会话的执行分钟。
 
         Parameters
         ----------
@@ -491,6 +517,7 @@ class TradingCalendar(with_metaclass(ABCMeta)):
         )
 
     def execution_minutes_for_sessions_in_range(self, start, stop):
+        """期间所有执行分钟"""
         minutes = self.execution_minutes_for_session
         return pd.DatetimeIndex(
             np.concatenate([
@@ -522,8 +549,11 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def sessions_in_range(self, start_session_label, end_session_label):
         """
-        Given start and end session labels, return all the sessions in that
-        range, inclusive.
+        给定开始和结束会话标签，返回该范围内的所有会话（包含）。
+
+        注
+        --
+            输入时使用normalize
 
         Parameters
         ----------
@@ -611,10 +641,8 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def minutes_in_range(self, start_minute, end_minute):
         """
-        Given start and end minutes, return all the calendar minutes
-        in that range, inclusive.
-
-        Given minutes don't need to be calendar minutes.
+        给定开始和结束分钟，返回该范围内的所有日历分钟数，包括开始与结束。
+        给定分钟并不需要是日历分钟
 
         Parameters
         ----------
@@ -737,7 +765,7 @@ class TradingCalendar(with_metaclass(ABCMeta)):
     @lazyval
     def all_minutes(self):
         """
-        Returns a DatetimeIndex representing all the minutes in this calendar.
+        返回表示此日历中所有分钟的`DatetimeIndex`。
         """
         opens_in_ns = self._opens.values.astype(
             'datetime64[ns]',
@@ -746,36 +774,45 @@ class TradingCalendar(with_metaclass(ABCMeta)):
         closes_in_ns = self._closes.values.astype(
             'datetime64[ns]',
         ).view('int64')
-
-        return DatetimeIndex(
+        # compute_all_minutes假设每天仅包含连续分钟块
+        dts = DatetimeIndex(
             compute_all_minutes(opens_in_ns, closes_in_ns),
             tz='utc',
         )
+        # 如果有午休，则排除午休时段
+        if self.use_lunch_break:
+            # 需要使用utc时间
+            utc_start = days_at_time(
+                [dts[0].date()], self.lunch_break_start_time, self.tz).time[0]
+            utc_end = days_at_time(
+                [dts[0].date()], self.lunch_break_end_time, self.tz).time[0]
+            locs = dts.indexer_between_time(
+                utc_start, utc_end, include_start=True, include_end=True)
+            return dts.delete(locs)
+        else:
+            return dts
 
     @preprocess(dt=coerce(pd.Timestamp, attrgetter('value')))
     def minute_to_session_label(self, dt, direction="next"):
         """
-        Given a minute, get the label of its containing session.
+        给定dt，获取其所在会话的标签
 
         Parameters
         ----------
         dt : pd.Timestamp or nanosecond offset
-            The dt for which to get the containing session.
+            所含会话的dt
 
         direction: str
-            "next" (default) means that if the given dt is not part of a
-            session, return the label of the next session.
+            “next”（默认）意味着如果给定的dt不是会话的一部分，则返回下一个会话的标签。
 
-            "previous" means that if the given dt is not part of a session,
-            return the label of the previous session.
+            "previous"表示如果给定的dt不是会话的一部分，则返回前一个会话的标签。
 
-            "none" means that a KeyError will be raised if the given
-            dt is not part of a session.
+            "none"表示如果给定的dt不是会话的一部分，则会引发KeyError。
 
         Returns
         -------
         pd.Timestamp (midnight UTC)
-            The label of the containing session.
+            所在会话的标签。
         """
         if direction == "next":
             try:
@@ -808,8 +845,7 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def minute_index_to_session_labels(self, index):
         """
-        Given a sorted DatetimeIndex of market minutes, return a
-        DatetimeIndex of the corresponding session labels.
+        给定市场分钟的排序DatetimeIndex，返回相应会话标签的DatetimeIndex。
 
         Parameters
         ----------
@@ -825,10 +861,8 @@ class TradingCalendar(with_metaclass(ABCMeta)):
 
     def _special_dates(self, calendars, ad_hoc_dates, start_date, end_date):
         """
-        Union an iterable of pairs of the form (time, calendar)
-        and an iterable of pairs of the form (time, [dates])
-
-        (This is shared logic for computing special opens and special closes.)
+        联合一对以（时间，日历）格式的迭代和一对以（时间，[日期]）格式的迭代
+        (这是计算特殊开盘和特殊收盘的共享逻辑。)
         """
         _dates = DatetimeIndex([], tz='UTC').union_many(
             [
@@ -871,8 +905,7 @@ def _overwrite_special_dates(midnight_utcs,
                              opens_or_closes,
                              special_opens_or_closes):
     """
-    Overwrite dates in open_or_closes with corresponding dates in
-    special_opens_or_closes, using midnight_utcs for alignment.
+    用special_opens_or_closes中的相应日期覆盖open_or_closes中的日期，使用midnight_utcs对齐。
     """
     # Short circuit when nothing to apply.
     if not len(special_opens_or_closes):

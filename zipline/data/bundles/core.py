@@ -15,6 +15,13 @@ from ..us_equity_pricing import (
     SQLiteAdjustmentReader,
     SQLiteAdjustmentWriter,
 )
+# 逐步替代
+from ..cn_equity_pricing import (
+    BcolzDailyBarReader,
+    CnBcolzDailyBarWriter,
+    SQLiteAdjustmentReader,
+    SQLiteAdjustmentWriter,
+)
 from ..minute_bars import (
     BcolzMinuteBarReader,
     BcolzMinuteBarWriter,
@@ -346,6 +353,7 @@ def _make_bundle_core():
         ----------
         name : str
             The name of the bundle.
+            所有以cn开头的名称，使用cn开头的reader及writer
         environ : mapping, optional
             The environment variables. By default this is os.environ.
         timestamp : datetime, optional
@@ -380,6 +388,10 @@ def _make_bundle_core():
         cachepath = cache_path(name, environ=environ)
         pth.ensure_directory(pth.data_path([name, timestr], environ=environ))
         pth.ensure_directory(cachepath)
+        if name.upper()[:2] == 'CN':
+            bcolz_writer_class = CnBcolzDailyBarWriter
+        else:
+            bcolz_writer_class = BcolzDailyBarWriter
         with dataframe_cache(cachepath, clean_on_failure=False) as cache, \
                 ExitStack() as stack:
             # we use `cleanup_on_failure=False` so that we don't purge the
@@ -393,7 +405,7 @@ def _make_bundle_core():
                         name, timestr, environ=environ,
                     )
                 )
-                daily_bar_writer = BcolzDailyBarWriter(
+                daily_bar_writer = bcolz_writer_class(
                     daily_bars_path,
                     calendar,
                     start_session,

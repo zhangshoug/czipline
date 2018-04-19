@@ -1,5 +1,6 @@
 """
 构造股票日线数据集
+TODO：检查日期是否类型：datetime64[s]？datetime64[ns]？
 """
 
 import pandas as pd
@@ -105,7 +106,7 @@ def gen_symbol_data(symbol_map,
         yield asset_id, asset_data
 
 
-@bundles.register('cnstock', minutes_per_day=241)
+@bundles.register('cnstock', calendar_name='SZSH', minutes_per_day=241)
 def quandl_bundle(environ,
                   asset_db_writer,
                   minute_bar_writer,

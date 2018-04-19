@@ -50,6 +50,29 @@ from zipline.utils.calendars.trading_calendar import days_at_time, \
     TradingCalendar
 
 
+def manually_minutes(start, end, calendar):
+    """构造日历指定期间的交易分钟(限定在一个交易日内)"""
+    if start.date() != end.date():
+        raise ValueError('开始时间与结束时间必须在同一天')
+    if calendar.use_lunch_break:
+        am_close = days_at_time([start.normalize()],
+                                calendar.lunch_break_start_time,
+                                calendar.tz)
+        pm_open = days_at_time([end.normalize()],
+                               calendar.lunch_break_end_time,
+                               calendar.tz)
+        am = pd.date_range(start=start,
+                           end=(am_close - Timedelta(minutes=1))[0],
+                           freq="min")
+        pm = pd.date_range(start=(pm_open + Timedelta(minutes=1))[0],
+                           end=end,
+                           freq="min")
+        expected = am.union(pm)
+    else:
+        expected = pd.date_range(start=satrt, end=end, freq="min")
+    return expected
+
+
 class FakeCalendar(TradingCalendar):
     @property
     def name(self):
@@ -157,6 +180,11 @@ class DaysAtTimeTestCase(TestCase):
             '1990-04-02', -1, time(19, 1), timezone('America/Chicago'),
             '1990-04-01 19:01',
         ),
+        # SZSH day after DST start
+        (
+            '2018-04-18', -1, time(9, 31), timezone('Asia/Shanghai'),
+            '2018-04-17 9:31',
+        ),
     ])
     def test_days_at_time(self, day, day_offset, time_offset, tz, expected):
         days = pd.DatetimeIndex([pd.Timestamp(day, tz=tz)])
@@ -206,6 +234,7 @@ class ExchangeCalendarTestBase(object):
         cls.calendar = cls.calendar_class(cls.start_date, cls.end_date)
 
         cls.one_minute = pd.Timedelta(minutes=1)
+        cls.half_hour = pd.Timedelta(minutes=29)  # 不超过半小时
         cls.one_hour = pd.Timedelta(hours=1)
 
     def test_sanity_check_session_lengths(self):
@@ -366,6 +395,9 @@ class ExchangeCalendarTestBase(object):
             open_minute = info[1].iloc[0]
             close_minute = info[1].iloc[1]
             hour_into_session = open_minute + self.one_hour
+            # 大A最短交易时间为半小时
+            if self.calendar.use_lunch_break:
+                hour_into_session = open_minute + self.half_hour
 
             minute_before_session = open_minute - self.one_minute
             minute_after_session = close_minute + self.one_minute
@@ -455,7 +487,7 @@ class ExchangeCalendarTestBase(object):
         (2, 1),
     ])
     def test_minute_index_to_session_labels(self, interval, offset):
-        if self.answer_key_filename.upper() == 'SZSH':
+        if self.calendar.use_lunch_break:
             # 更改为A股有效交易日期，而非假日期间，确保测试正常运行
             minutes = self.calendar.minutes_for_sessions_in_range(
                 pd.Timestamp('2016-01-04', tz='UTC'),
@@ -465,7 +497,7 @@ class ExchangeCalendarTestBase(object):
             minutes = self.calendar.minutes_for_sessions_in_range(
                 pd.Timestamp('2011-01-04', tz='UTC'),
                 pd.Timestamp('2011-04-04', tz='UTC'),
-            )                        
+            )
         minutes = minutes[range(offset, len(minutes), interval)]
 
         np.testing.assert_array_equal(
@@ -522,10 +554,9 @@ class ExchangeCalendarTestBase(object):
         _open, _close = self.calendar.open_and_close_for_session(
             full_session_label
         )
-
         np.testing.assert_array_equal(
             minutes,
-            pd.date_range(start=_open, end=_close, freq="min")
+            manually_minutes(_open, _close, self.calendar)
         )
 
         # early close period
@@ -538,7 +569,7 @@ class ExchangeCalendarTestBase(object):
 
         np.testing.assert_array_equal(
             minutes_for_early_close,
-            pd.date_range(start=_open, end=_close, freq="min")
+            manually_minutes(_open, _close, self.calendar)
         )
 
     def test_sessions_in_range(self):
@@ -607,25 +638,24 @@ class ExchangeCalendarTestBase(object):
             # if no gaps, then minutes2 should have 2 extra minutes
             np.testing.assert_array_equal(minutes1, minutes2[1:-1])
 
-        # manually construct the minutes
+        # 使用辅助函数构造期间分钟
         all_minutes = np.concatenate([
-            pd.date_range(
-                start=first_open,
-                end=first_close,
-                freq="min"
+            manually_minutes(
+                first_open,
+                first_close,
+                self.calendar
             ),
-            pd.date_range(
-                start=middle_open,
-                end=middle_close,
-                freq="min"
-            ),
-            pd.date_range(
-                start=last_open,
-                end=last_close,
-                freq="min"
-            )
+            manually_minutes(
+                middle_open,
+                middle_close,
+                self.calendar
+            ),  
+            manually_minutes(
+                last_open,
+                last_close,
+                self.calendar
+            ),                       
         ])
-
         np.testing.assert_array_equal(all_minutes, minutes1)
 
     def test_minutes_for_sessions_in_range(self):

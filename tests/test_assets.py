@@ -998,7 +998,7 @@ class AssetFinderTestCase(WithTradingCalendars, ZiplineTestCase):
             result = finder.lifetimes(dates, include_start_date=False)
             assert_frame_equal(result, expected_no_start)
 
-    def test_sids(self):
+    def TEST_SYMBOLS(self):
         # Ensure that the sids property of the AssetFinder is functioning
         self.write_assets(equities=make_simple_equity_info(
             [0, 1, 2],

@@ -1,5 +1,6 @@
 """
 Module for building a complete daily dataset from Quandl's WIKI dataset.
+QUANDL_API_KEY='F55z9Wzni-AfB-47ys6X'
 """
 from io import BytesIO
 import tarfile
@@ -202,7 +203,7 @@ def quandl_bundle(environ,
         raise ValueError(
             "Please set your QUANDL_API_KEY environment variable and retry."
         )
-
+    # 此处为所有代码一定期间的日线数据，包含分红、派息列
     raw_data = fetch_data_table(
         api_key,
         show_progress,

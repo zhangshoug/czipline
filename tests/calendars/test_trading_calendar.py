@@ -719,7 +719,7 @@ class ExchangeCalendarTestBase(object):
         self.assertEqual(one_day_distance, 1)
 
     def test_open_and_close_for_session(self):
-        for index, row in self.answers.iterrows():
+        for _, row in self.answers.iterrows():
             session_label = row.name
             open_answer = row.iloc[0]
             close_answer = row.iloc[1]

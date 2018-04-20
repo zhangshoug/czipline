@@ -234,7 +234,6 @@ class BenchmarkReturnsAndVolatility(object):
         if np.isnan(r):
             r = None
         packet['cumulative_risk_metrics']['benchmark_period_return'] = r
-
         v = self._minute_annual_volatility[dt]
         if np.isnan(v):
             v = None

@@ -210,7 +210,6 @@ class BcolzMinuteBarMetadata(object):
         path = cls.metadata_path(rootdir)
         with open(path) as fp:
             raw_data = json.load(fp)
-
             try:
                 version = raw_data['version']
             except KeyError:
@@ -922,7 +921,6 @@ class BcolzMinuteBarReader(MinuteBarReader):
 
         self._start_session = metadata.start_session
         self._end_session = metadata.end_session
-
         self.calendar = metadata.calendar
         slicer = self.calendar.schedule.index.slice_indexer(
             self._start_session,

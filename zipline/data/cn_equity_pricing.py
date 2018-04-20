@@ -72,7 +72,7 @@ from zipline.utils.memoize import lazyval
 from zipline.utils.cli import maybe_show_progress
 from ._equities import _compute_row_slices, _read_bcolz_data
 from ._adjustments import load_adjustments_from_sqlite
-
+from .constants import ADJUST_FACTOR
 
 logger = logbook.Logger('CnEquityPricing')
 
@@ -224,8 +224,8 @@ class CnBcolzDailyBarWriter(object):
         return "合并日线股票文件："
 
     def progress_bar_item_show_func(self, value):
-        # 显示股票代码
-        return value if value is None else str(value[0]).zfill(6)
+        # 只是单纯的序号，没有实际意义
+        return value if value is None else str(value[0])
 
     def write(self,
               data,
@@ -438,7 +438,7 @@ class CnBcolzDailyBarWriter(object):
         return ctable.fromdataframe(processed)
 
 
-class BcolzDailyBarReader(SessionBarReader):
+class CnBcolzDailyBarReader(SessionBarReader):
     """
     Reader for raw pricing data written by BcolzDailyOHLCVWriter.
 
@@ -645,7 +645,7 @@ class BcolzDailyBarReader(SessionBarReader):
             assets,
         )
         read_all = len(assets) > self._read_all_threshold
-        return _read_bcolz_data(
+        raw_arrays = _read_bcolz_data(
             self._table,
             (end_idx - start_idx + 1, len(assets)),
             list(columns),
@@ -654,6 +654,11 @@ class BcolzDailyBarReader(SessionBarReader):
             offsets,
             read_all,
         )
+        # # 调整回原始数据（成交量、成交额、总市值、流通市值会丧失精度）
+        for i, col in enumerate(list(columns)):
+            adj_ = 1 / ADJUST_FACTOR.get(col, 1)
+            raw_arrays[i] = raw_arrays[i].dot(adj_)
+        return raw_arrays
 
     def _spot_col(self, colname):
         """
@@ -756,14 +761,17 @@ class BcolzDailyBarReader(SessionBarReader):
             0.
         """
         ix = self.sid_day_index(sid, dt)
-        price = self._spot_col(field)[ix]
-        if field != 'volume':
-            if price == 0:
+        field_value = self._spot_col(field)[ix]
+        # # 调整因子
+        adj_ = 1 / ADJUST_FACTOR.get(field, 1)
+        # # 价格为0时，需要返回nan
+        if field in OHLC:
+            if field_value == 0:
                 return nan
             else:
-                return price * 0.001
+                return field_value * adj_
         else:
-            return price
+            return field_value
 
 
 class PanelBarReader(SessionBarReader):

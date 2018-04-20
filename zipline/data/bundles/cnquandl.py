@@ -15,15 +15,15 @@ from .sqldata import (fetch_single_equity, fetch_single_quity_adjustments,
 
 log = Logger(__name__)
 
+# sid 没有实际意义。按符号查询即可。
+# def _to_sid(x):
+#     """符号转换为sid"""
+#     return int(x)
 
-def _to_sid(x):
-    """符号转换为sid"""
-    return int(x)
 
-
-def _to_symbol(x):
-    """sid转换为符号"""
-    return str(x).zfill(6)
+# def _to_symbol(x):
+#     """sid转换为符号"""
+#     return str(x).zfill(6)
 
 
 def _adjusted_raw_data(raw_df):
@@ -65,8 +65,8 @@ def gen_symbol_data(symbol_map,
                     sessions,
                     splits,
                     dividends):
-    for _, symbol in symbol_map.iteritems():
-        asset_id = _to_sid(symbol)
+    for asset_id, symbol in symbol_map.iteritems():
+        # asset_id = _to_sid(symbol)
         # 日线原始数据
         raw_data = fetch_single_equity(
             symbol,
@@ -105,19 +105,19 @@ def gen_symbol_data(symbol_map,
 
         yield asset_id, asset_data
 
-
+# 注意，注册函数名称要区别于quandl模块，否则会出错。名称随意。
 @bundles.register('cnstock', calendar_name='SZSH', minutes_per_day=241)
-def quandl_bundle(environ,
-                  asset_db_writer,
-                  minute_bar_writer,
-                  daily_bar_writer,
-                  adjustment_writer,
-                  calendar,
-                  start_session,
-                  end_session,
-                  cache,
-                  show_progress,
-                  output_dir):
+def cnquandl_bundle(environ,
+                    asset_db_writer,
+                    minute_bar_writer,
+                    daily_bar_writer,
+                    adjustment_writer,
+                    calendar,
+                    start_session,
+                    end_session,
+                    cache,
+                    show_progress,
+                    output_dir):
     """Build a zipline data bundle from the cnstock dataset.
     """
     log.info('读取股票元数据......')
@@ -151,18 +151,20 @@ def quandl_bundle(environ,
     )
 
 # 以cn开头，方可匹配相应的读写器
+
+
 @bundles.register('cntest', calendar_name='SZSH', minutes_per_day=241)
-def test_bundle(environ,
-                asset_db_writer,
-                minute_bar_writer,
-                daily_bar_writer,
-                adjustment_writer,
-                calendar,
-                start_session,
-                end_session,
-                cache,
-                show_progress,
-                output_dir):
+def cntest_bundle(environ,
+                  asset_db_writer,
+                  minute_bar_writer,
+                  daily_bar_writer,
+                  adjustment_writer,
+                  calendar,
+                  start_session,
+                  end_session,
+                  cache,
+                  show_progress,
+                  output_dir):
     """Build a zipline test data bundle from the cnstock dataset.
     """
     log.info('读取股票元数据......')

@@ -174,14 +174,14 @@ def ipython_only(option):
     " be written to stdout.",
 )
 @click.option(
-    '-tc',
+    '-c',
     '--trading-calendar',
     metavar='TRADING-CALENDAR',
     default='SZSH',
     help="The calendar you want to use e.g. LSE. NYSE is the default."
 )
 @click.option(
-    '-bm',
+    '-B',
     '--bm-symbol',
     default='000300',
     help="基准收益率指数代码，默认000300，沪深300指数"
@@ -193,6 +193,7 @@ def ipython_only(option):
     help='Print the algorithm to stdout.',
 )
 @click.option(
+    '-M',
     '--metrics-set',
     default='default',
     help='The metrics set to use. New metrics sets may be registered in your'

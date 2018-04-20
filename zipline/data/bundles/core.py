@@ -17,7 +17,7 @@ from ..us_equity_pricing import (
 )
 # 逐步替代
 from ..cn_equity_pricing import (
-    BcolzDailyBarReader,
+    CnBcolzDailyBarReader,
     CnBcolzDailyBarWriter,
     SQLiteAdjustmentReader,
     SQLiteAdjustmentWriter,
@@ -531,20 +531,36 @@ def _make_bundle_core():
         if timestamp is None:
             timestamp = pd.Timestamp.utcnow()
         timestr = most_recent_data(name, timestamp, environ=environ)
-        return BundleData(
-            asset_finder=AssetFinder(
-                asset_db_path(name, timestr, environ=environ),
-            ),
-            equity_minute_bar_reader=BcolzMinuteBarReader(
-                minute_equity_path(name, timestr, environ=environ),
-            ),
-            equity_daily_bar_reader=BcolzDailyBarReader(
-                daily_equity_path(name, timestr, environ=environ),
-            ),
-            adjustment_reader=SQLiteAdjustmentReader(
-                adjustment_db_path(name, timestr, environ=environ),
-            ),
-        )
+        if name.upper()[:2] == 'CN':
+            return BundleData(
+                asset_finder=AssetFinder(
+                    asset_db_path(name, timestr, environ=environ),
+                ),
+                equity_minute_bar_reader=BcolzMinuteBarReader(
+                    minute_equity_path(name, timestr, environ=environ),
+                ),
+                equity_daily_bar_reader=CnBcolzDailyBarReader(
+                    daily_equity_path(name, timestr, environ=environ),
+                ),
+                adjustment_reader=SQLiteAdjustmentReader(
+                    adjustment_db_path(name, timestr, environ=environ),
+                ),
+            )    
+        else:        
+            return BundleData(
+                asset_finder=AssetFinder(
+                    asset_db_path(name, timestr, environ=environ),
+                ),
+                equity_minute_bar_reader=BcolzMinuteBarReader(
+                    minute_equity_path(name, timestr, environ=environ),
+                ),
+                equity_daily_bar_reader=BcolzDailyBarReader(
+                    daily_equity_path(name, timestr, environ=environ),
+                ),
+                adjustment_reader=SQLiteAdjustmentReader(
+                    adjustment_db_path(name, timestr, environ=environ),
+                ),
+            )
 
     @preprocess(
         before=optionally(ensure_timestamp),

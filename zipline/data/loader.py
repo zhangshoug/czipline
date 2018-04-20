@@ -32,7 +32,7 @@ logger = logbook.Logger('Loader')
 
 # Mapping from index symbol to appropriate bond data
 INDEX_MAPPING = {
-    '000001':
+    '000300':
     (treasuries_cn, 'treasury_curves_cn.csv', ''),
     'SPY':
     (treasuries, 'treasury_curves.csv', 'www.federalreserve.gov'),
@@ -262,8 +262,9 @@ def ensure_treasury_data(symbol, first_date, last_date, now, environ=None):
     comparing the current time to the result of os.path.getmtime on the cache
     path.
     """
+    # 不会因为默认值而改变测试结果
     loader_module, filename, _ = INDEX_MAPPING.get(
-        symbol, INDEX_MAPPING['SPY'],
+        symbol, INDEX_MAPPING['000300'] if symbol.isdigit() else INDEX_MAPPING['SPY'],
     )
     first_date = max(first_date, loader_module.earliest_possible_date())
 

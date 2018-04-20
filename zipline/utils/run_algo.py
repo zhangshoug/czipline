@@ -151,10 +151,13 @@ def _run(handle_data,
             )
         env = TradingEnvironment(asset_db_path=connstr,
                                  trading_calendar=trading_calendar,
+                                 # 构造使用字符串格式
+                                 exchange_tz=trading_calendar.tz.zone,
                                  bm_symbol=bm_symbol,
                                  environ=environ)
 
         first_trading_day = bundle_data.equity_minute_bar_reader.first_trading_day
+
         data = DataPortal(
             env.asset_finder,
             trading_calendar=trading_calendar,

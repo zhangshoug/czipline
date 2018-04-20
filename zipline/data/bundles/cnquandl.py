@@ -150,8 +150,8 @@ def quandl_bundle(environ,
         dividends=pd.concat(dividends, ignore_index=True),
     )
 
-
-@bundles.register('.test', minutes_per_day=241)
+# 以cn开头，方可匹配相应的读写器
+@bundles.register('cntest', calendar_name='SZSH', minutes_per_day=241)
 def test_bundle(environ,
                 asset_db_writer,
                 minute_bar_writer,
@@ -165,6 +165,7 @@ def test_bundle(environ,
                 output_dir):
     """Build a zipline test data bundle from the cnstock dataset.
     """
+    log.info('读取股票元数据......')
     # 测试集
     metadata = gen_asset_metadata()
     metadata = metadata[metadata.symbol.isin(TEST_SYMBOLS)]

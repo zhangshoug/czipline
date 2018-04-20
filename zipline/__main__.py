@@ -177,7 +177,7 @@ def ipython_only(option):
     '-tc',
     '--trading-calendar',
     metavar='TRADING-CALENDAR',
-    default='NYSE',
+    default='SZSH',
     help="The calendar you want to use e.g. LSE. NYSE is the default."
 )
 @click.option(

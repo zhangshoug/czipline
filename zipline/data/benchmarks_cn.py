@@ -3,7 +3,7 @@ from cswd.sql.base import session_scope
 from cswd.sql.models import IndexDaily
 
 
-def get_benchmark_returns(symbol):
+def get_cn_benchmark_returns(symbol):
     """
     获取指数基准收益率，默认代码`000001`
 

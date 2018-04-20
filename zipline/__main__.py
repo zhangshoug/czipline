@@ -174,6 +174,7 @@ def ipython_only(option):
     " be written to stdout.",
 )
 @click.option(
+    '-tc',
     '--trading-calendar',
     metavar='TRADING-CALENDAR',
     default='NYSE',

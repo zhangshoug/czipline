@@ -19,7 +19,8 @@ import pandas as pd
 from six.moves.urllib_error import HTTPError
 
 from .benchmarks import get_benchmark_returns
-from . import treasuries, treasuries_can
+from .benchmarks_cn import get_cn_benchmark_returns
+from . import treasuries, treasuries_can, treasuries_cn
 from ..utils.paths import (
     cache_root,
     data_root,
@@ -31,6 +32,8 @@ logger = logbook.Logger('Loader')
 
 # Mapping from index symbol to appropriate bond data
 INDEX_MAPPING = {
+    '000001':
+    (treasuries_cn, 'treasury_curves_cn.csv', ''),
     'SPY':
     (treasuries, 'treasury_curves.csv', 'www.federalreserve.gov'),
     '^GSPTSE':
@@ -127,10 +130,12 @@ def load_market_data(trading_day=None, trading_days=None, bm_symbol='SPY',
     '1month', '3month', '6month',
     '1year','2year','3year','5year','7year','10year','20year','30year'
     """
+    calendar = get_calendar('SZSH') if bm_symbol.isdigit() else get_calendar('NYSE')
     if trading_day is None:
-        trading_day = get_calendar('NYSE').trading_day
+        # 日历根本没有trading_day属性，应为day属性
+        trading_day = calendar.day
     if trading_days is None:
-        trading_days = get_calendar('NYSE').all_sessions
+        trading_days = calendar.all_sessions
 
     first_date = trading_days[0]
     now = pd.Timestamp.utcnow()
@@ -211,9 +216,10 @@ def ensure_benchmark_data(symbol, first_date, last_date, now, trading_day,
         first_date=first_date - trading_day,
         last_date=last_date
     )
-
+    # A股指数代码为数字，其他国家为字符。据此标准，选择基准收益率函数
+    benchmark_fun = get_cn_benchmark_returns if symbol.isdigit() else get_benchmark_returns
     try:
-        data = get_benchmark_returns(symbol)
+        data = benchmark_fun(symbol)
         data.to_csv(get_data_filepath(filename, environ))
     except (OSError, IOError, HTTPError):
         logger.exception('Failed to cache the new benchmark returns')

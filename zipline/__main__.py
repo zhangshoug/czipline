@@ -181,6 +181,12 @@ def ipython_only(option):
     help="The calendar you want to use e.g. LSE. NYSE is the default."
 )
 @click.option(
+    '-bm',
+    '--bm-symbol',
+    default='000300',
+    help="基准收益率指数代码，默认000300，沪深300指数"
+)
+@click.option(
     '--print-algo/--no-print-algo',
     is_flag=True,
     default=False,
@@ -213,7 +219,8 @@ def run(ctx,
         trading_calendar,
         print_algo,
         metrics_set,
-        local_namespace):
+        local_namespace,
+        bm_symbol):
     """Run a backtest for the given algorithm.
     """
     # check that the start and end dates are passed correctly
@@ -258,6 +265,7 @@ def run(ctx,
         metrics_set=metrics_set,
         local_namespace=local_namespace,
         environ=os.environ,
+        bm_symbol=bm_symbol,
     )
 
     if output == '-':

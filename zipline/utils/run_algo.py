@@ -71,7 +71,8 @@ def _run(handle_data,
          print_algo,
          metrics_set,
          local_namespace,
-         environ):
+         environ,
+         bm_symbol):
     """Run a backtest for the given algorithm.
 
     This is shared between the cli and :func:`zipline.run_algo`.
@@ -148,9 +149,12 @@ def _run(handle_data,
                 "invalid url %r, must begin with 'sqlite:///'" %
                 str(bundle_data.asset_finder.engine.url),
             )
-        env = TradingEnvironment(asset_db_path=connstr, environ=environ)
-        first_trading_day =\
-            bundle_data.equity_minute_bar_reader.first_trading_day
+        env = TradingEnvironment(asset_db_path=connstr,
+                                 trading_calendar=trading_calendar,
+                                 bm_symbol=bm_symbol,
+                                 environ=environ)
+
+        first_trading_day = bundle_data.equity_minute_bar_reader.first_trading_day
         data = DataPortal(
             env.asset_finder,
             trading_calendar=trading_calendar,

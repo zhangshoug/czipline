@@ -262,7 +262,7 @@ def ensure_treasury_data(symbol, first_date, last_date, now, environ=None):
     comparing the current time to the result of os.path.getmtime on the cache
     path.
     """
-    loader_module, filename, source = INDEX_MAPPING.get(
+    loader_module, filename, _ = INDEX_MAPPING.get(
         symbol, INDEX_MAPPING['SPY'],
     )
     first_date = max(first_date, loader_module.earliest_possible_date())
@@ -300,10 +300,10 @@ def ensure_treasury_data(symbol, first_date, last_date, now, environ=None):
 
 def _load_cached_data(filename, first_date, last_date, now, resource_name,
                       environ=None):
-    if resource_name == 'benchmark':
-        from_csv = pd.Series.from_csv
-    else:
-        from_csv = pd.DataFrame.from_csv
+    # if resource_name == 'benchmark':
+    #     from_csv = pd.Series.from_csv
+    # else:
+    #     from_csv = pd.DataFrame.from_csv
 
     # Path for the cache.
     path = get_data_filepath(filename, environ)
@@ -312,8 +312,9 @@ def _load_cached_data(filename, first_date, last_date, now, resource_name,
     # yet, so don't try to read from 'path'.
     if os.path.exists(path):
         try:
-            data = from_csv(path)
-            data.index = data.index.to_datetime().tz_localize('UTC')
+            data = pd.read_csv(path)
+            # data.index = data.index.to_datetime().tz_localize('UTC')
+            data.index = pd.to_datetime(data.index).tz_localize('UTC')
             if has_data_for_dates(data, first_date, last_date):
                 return data
 

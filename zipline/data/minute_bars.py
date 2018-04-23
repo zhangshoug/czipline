@@ -71,8 +71,13 @@ class MinuteBarReader(BarReader):
 
 
 def _calc_minute_index(market_opens, minutes_per_day):
+    exclude_lunch = False
+    # 使用硬编码解决午休问题
+    if minutes_per_day == 241:
+        exclude_lunch = True
+        minutes_per_day = int(minutes_per_day + 1.5 * 60)
     minutes = np.zeros(len(market_opens) * minutes_per_day,
-                       dtype='datetime64[ns]')
+                    dtype='datetime64[ns]')
     deltas = np.arange(0, minutes_per_day, dtype='timedelta64[m]')
     for i, market_open in enumerate(market_opens):
         start = market_open.asm8
@@ -80,7 +85,12 @@ def _calc_minute_index(market_opens, minutes_per_day):
         start_ix = minutes_per_day * i
         end_ix = start_ix + minutes_per_day
         minutes[start_ix:end_ix] = minute_values
-    return pd.to_datetime(minutes, utc=True, box=True)
+    dts = pd.to_datetime(minutes, utc=True, box=True)
+    if exclude_lunch:
+        ex_locs = dts.indexer_between_time('11:31','12:59')
+        return dts.delete(ex_locs)
+    else:
+        return dts
 
 
 def _sid_subdir_path(sid):
@@ -248,7 +258,6 @@ class BcolzMinuteBarMetadata(object):
                     ohlc_ratios_per_sid = keymap(int, ohlc_ratios_per_sid)
             else:
                 ohlc_ratios_per_sid = None
-
             return cls(
                 default_ohlc_ratio,
                 ohlc_ratios_per_sid,
@@ -717,6 +726,8 @@ class BcolzMinuteBarWriter(object):
                 volume : float64|int64
             index : DatetimeIndex of market minutes.
         """
+        if df.empty:
+            return
         cols = {
             'open': df.open.values,
             'high': df.high.values,
@@ -808,7 +819,6 @@ class BcolzMinuteBarWriter(object):
                 sid={2}""".strip()).format(last_date, input_first_day, sid))
 
         latest_min_count = all_minutes.get_loc(last_minute_to_write)
-
         # Get all the minutes we wish to write (all market minutes after the
         # latest currently written, up to and including last_minute_to_write)
         all_minutes_in_window = all_minutes[num_rec_mins:latest_min_count + 1]

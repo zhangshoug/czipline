@@ -11,7 +11,7 @@ from zipline.utils.calendars import register_calendar_alias
 from . import core as bundles
 from ..constants import ADJUST_FACTOR, TEST_SYMBOLS
 from .sqldata import (fetch_single_equity, fetch_single_quity_adjustments,
-                      gen_asset_metadata)
+                      gen_asset_metadata, fetch_single_minutely_equity)
 
 log = Logger(__name__)
 
@@ -64,29 +64,38 @@ def _update_dividends(dividends, asset_id, origin_data):
 def gen_symbol_data(symbol_map,
                     sessions,
                     splits,
-                    dividends):
+                    dividends,
+                    is_minutely):
     for asset_id, symbol in symbol_map.iteritems():
-        # asset_id = _to_sid(symbol)
-        # 日线原始数据
-        raw_data = fetch_single_equity(
-            symbol,
-            start=sessions[0],
-            end=sessions[-1],
-        )
-        # 不得包含涨跌幅列，含有正负号
-        raw_data.drop('change_pct', axis=1, inplace=True)
-        # 调整数据精度
-        raw_data = _adjusted_raw_data(raw_data)
-        # 以日期、符号为索引
-        raw_data.set_index(['date', 'symbol'], inplace=True)
-        # 时区调整，以0.0填充na
-        # 转换为以日期为索引的表(与sessions保持一致)
-        asset_data = raw_data.xs(
-            symbol,
-            level=1
-        ).reindex(
-            sessions.tz_localize(None)
-        ).fillna(0.0)
+        if not is_minutely:
+            # 日线原始数据
+            raw_data = fetch_single_equity(
+                symbol,
+                start=sessions[0],
+                end=sessions[-1],
+            )
+            # 不得包含涨跌幅列，含有正负号
+            raw_data.drop('change_pct', axis=1, inplace=True)
+            # 调整数据精度
+            raw_data = _adjusted_raw_data(raw_data)
+            # 以日期、符号为索引
+            raw_data.set_index(['date', 'symbol'], inplace=True)
+            # 时区调整，以0.0填充na
+            # 转换为以日期为索引的表(与sessions保持一致)
+            asset_data = raw_data.xs(
+                symbol,
+                level=1
+            ).reindex(
+                sessions.tz_localize(None)
+            ).fillna(0.0)
+        else:
+            # 处理分钟级别数据
+            asset_data = fetch_single_minutely_equity(
+                symbol,
+                start=sessions[0],
+                end=sessions[-1],
+            ).tz_localize('Asia/Shanghai').tz_convert('utc')
+
         # 顺带处理分红派息
         # 获取原始调整数据
         raw_adjustment = fetch_single_quity_adjustments(symbol,
@@ -106,18 +115,21 @@ def gen_symbol_data(symbol_map,
         yield asset_id, asset_data
 
 # 注意，注册函数名称要区别于quandl模块，否则会出错。名称随意。
-@bundles.register('cnstock', calendar_name='SZSH', minutes_per_day=241)
-def cnquandl_bundle(environ,
-                    asset_db_writer,
-                    minute_bar_writer,
-                    daily_bar_writer,
-                    adjustment_writer,
-                    calendar,
-                    start_session,
-                    end_session,
-                    cache,
-                    show_progress,
-                    output_dir):
+@bundles.register('cndaily',
+                  calendar_name='SZSH',
+                  end_session=pd.Timestamp('now', tz='Asia/Shanghai'),
+                  minutes_per_day=241)
+def cndaily_bundle(environ,
+                   asset_db_writer,
+                   minute_bar_writer,
+                   daily_bar_writer,
+                   adjustment_writer,
+                   calendar,
+                   start_session,
+                   end_session,
+                   cache,
+                   show_progress,
+                   output_dir):
     """Build a zipline data bundle from the cnstock dataset.
     """
     log.info('读取股票元数据......')
@@ -141,6 +153,7 @@ def cnquandl_bundle(environ,
             sessions,
             splits,
             dividends,
+            is_minutely=False
         ),
         show_progress=show_progress,
     )
@@ -151,23 +164,23 @@ def cnquandl_bundle(environ,
     )
 
 # 以cn开头，方可匹配相应的读写器
-
-
-@bundles.register('cntest', calendar_name='SZSH', minutes_per_day=241)
-def cntest_bundle(environ,
-                  asset_db_writer,
-                  minute_bar_writer,
-                  daily_bar_writer,
-                  adjustment_writer,
-                  calendar,
-                  start_session,
-                  end_session,
-                  cache,
-                  show_progress,
-                  output_dir):
+@bundles.register('cntdaily',
+                  calendar_name='SZSH',
+                  minutes_per_day=241)
+def cntdaily_bundle(environ,
+                    asset_db_writer,
+                    minute_bar_writer,
+                    daily_bar_writer,
+                    adjustment_writer,
+                    calendar,
+                    start_session,
+                    end_session,
+                    cache,
+                    show_progress,
+                    output_dir):
     """Build a zipline test data bundle from the cnstock dataset.
     """
-    log.info('读取股票元数据......')
+    log.info('读取股票元数据(测试集)......')
     # 测试集
     metadata = gen_asset_metadata()
     metadata = metadata[metadata.symbol.isin(TEST_SYMBOLS)]
@@ -186,6 +199,7 @@ def cntest_bundle(environ,
             sessions,
             splits,
             dividends,
+            is_minutely=False,
         ),
         show_progress=show_progress,
     )
@@ -196,4 +210,95 @@ def cntest_bundle(environ,
     )
 
 
-register_calendar_alias("CNSTOCK", "SZSH")
+@bundles.register('cnminutely',
+                  calendar_name='SZSH',
+                  minutes_per_day=241)
+def cnminutely_bundle(environ,
+                      asset_db_writer,
+                      minute_bar_writer,
+                      daily_bar_writer,
+                      adjustment_writer,
+                      calendar,
+                      start_session,
+                      end_session,
+                      cache,
+                      show_progress,
+                      output_dir):
+    """Build a zipline data bundle from the cnstock dataset.
+    """
+    log.info('读取股票元数据......')
+    metadata = gen_asset_metadata()
+
+    symbol_map = metadata.symbol
+    sessions = calendar.sessions_in_range(start_session, end_session)
+
+    log.info('分钟级别数据集（股票数量：{}）'.format(len(symbol_map)))
+
+    # 写入股票元数据
+    if show_progress:
+        log.info('写入资产元数据')
+    asset_db_writer.write(metadata)
+
+    splits = []
+    dividends = []
+    minute_bar_writer.write(
+        gen_symbol_data(
+            symbol_map,
+            sessions,
+            splits,
+            dividends,
+            is_minutely=True
+        ),
+        show_progress=show_progress,
+    )
+
+    adjustment_writer.write(
+        splits=pd.concat(splits, ignore_index=True),
+        dividends=pd.concat(dividends, ignore_index=True),
+    )
+
+
+@bundles.register('cntminutely',
+                  calendar_name='SZSH',
+                  minutes_per_day=241)
+def cntminutely_bundle(environ,
+                       asset_db_writer,
+                       minute_bar_writer,
+                       daily_bar_writer,
+                       adjustment_writer,
+                       calendar,
+                       start_session,
+                       end_session,
+                       cache,
+                       show_progress,
+                       output_dir):
+    """Build a zipline test data bundle from the cnstock dataset.
+    """
+    log.info('读取股票元数据(测试集)......')
+    # 测试集
+    metadata = gen_asset_metadata()
+    metadata = metadata[metadata.symbol.isin(TEST_SYMBOLS)]
+    sessions = calendar.sessions_in_range(start_session, end_session)
+
+    symbol_map = metadata.symbol
+    log.info('生成测试数据集（共{}只）'.format(len(symbol_map)))
+    splits = []
+    dividends = []
+
+    asset_db_writer.write(metadata)
+
+    minute_bar_writer.write(
+        gen_symbol_data(
+            symbol_map,
+            sessions,
+            splits,
+            dividends,
+            is_minutely=True
+        ),
+        show_progress=show_progress,
+    )
+
+    adjustment_writer.write(
+        splits=pd.concat(splits, ignore_index=True),
+        dividends=pd.concat(dividends, ignore_index=True),
+    )

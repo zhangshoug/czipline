@@ -123,6 +123,7 @@ def ipython_only(option):
     " defined names.",
 )
 @click.option(
+    '-F',
     '--data-frequency',
     type=click.Choice({'daily', 'minute'}),
     default='daily',
@@ -244,7 +245,7 @@ def run(ctx,
         )
 
     trading_calendar = get_calendar(trading_calendar)
-
+    
     perf = _run(
         initialize=None,
         handle_data=None,

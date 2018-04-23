@@ -1,13 +1,16 @@
 from sqlalchemy import func
 import pandas as pd
+import numpy as np
 from cswd.sql.base import session_scope
-from cswd.sql.models import (Issue, StockDaily, Adjustment,
+from cswd.sql.models import (Issue, StockDaily, Adjustment, DealDetail,
                              SpecialTreatment, SpecialTreatmentType)
 
 DAILY_COLS = ['symbol', 'date',
               'open', 'high', 'low', 'close',
               'prev_close', 'change_pct',
               'volume', 'amount', 'turnover', 'cmv', 'tmv']
+
+MINUTELY_COLS = ['symbol', 'date', 'open', 'high', 'low', 'close', 'volume']
 
 ADJUSTMENT_COLS = ['symbol', 'date', 'amount', 'ratio',
                    'record_date', 'pay_date', 'listing_date']
@@ -37,8 +40,12 @@ def get_start_dates():
     """
     col_names = ['symbol', 'start_date']
     with session_scope() as sess:
-        query = sess.query(Issue.code, Issue.A004_上市日期).filter(
-            Issue.A004_上市日期.isnot(None))
+        query = sess.query(
+            Issue.code,
+            Issue.A004_上市日期
+        ).filter(
+            Issue.A004_上市日期.isnot(None)
+        )
         df = pd.DataFrame.from_records(query.all())
         df.columns = col_names
         return df
@@ -62,7 +69,8 @@ def get_end_dates():
     col_names = ['symbol', 'end_date']
     with session_scope() as sess:
         query = sess.query(
-            SpecialTreatment.code, func.max(SpecialTreatment.date)
+            SpecialTreatment.code,
+            func.max(SpecialTreatment.date)
         ).group_by(
             SpecialTreatment.code
         ).having(
@@ -123,6 +131,18 @@ def gen_asset_metadata():
                                                         'last_traded']
         return df
 
+def _fill_zero(df):
+    """填充因为停牌ohlc可能存在的0值"""
+    # 将close放在第一列
+    ohlc_cols = ['close','open','high','low']
+    ohlc = df[ohlc_cols].copy()
+    ohlc.replace(0.0, np.nan, inplace=True)
+    ohlc.close.fillna(method='ffill', inplace=True)
+    # 按列填充
+    ohlc.fillna(method='ffill', axis=1,inplace=True)
+    for col in ohlc_cols:
+        df[col] = ohlc[col]
+    return df
 
 def fetch_single_equity(stock_code, start, end):
     """
@@ -149,9 +169,9 @@ def fetch_single_equity(stock_code, start, end):
     Examples
     --------
     >>> symbol = '000333'
-    >>> start_date = '2018-4-1'
+    >>> start_date = '2017-4-1'
     >>> end_date = pd.Timestamp('2018-4-16')
-    >>> df = fetch_single_stock_equity(symbol, start_date, end_date)
+    >>> df = fetch_single_equity(symbol, start_date, end_date)
     >>> df.iloc[:,:8]
         symbol        date   open   high    low  close  prev_close  change_pct
     0  000333  2018-04-02  53.30  55.00  52.68  52.84       54.53     -3.0992
@@ -167,24 +187,112 @@ def fetch_single_equity(stock_code, start, end):
     start = pd.Timestamp(start).date()
     end = pd.Timestamp(end).date()
     with session_scope() as sess:
-        query = sess.query(StockDaily.code,
-                           StockDaily.date,
-                           StockDaily.A002_开盘价,
-                           StockDaily.A003_最高价,
-                           StockDaily.A004_最低价,
-                           StockDaily.A005_收盘价,
-                           StockDaily.A009_前收盘,
-                           StockDaily.A011_涨跌幅,
-                           StockDaily.A006_成交量,
-                           StockDaily.A007_成交金额,
-                           StockDaily.A008_换手率,
-                           StockDaily.A013_流通市值,
-                           StockDaily.A012_总市值)
-        query = query.filter(StockDaily.code == stock_code
-                             ).filter(StockDaily.date.between(start, end))
+        query = sess.query(
+            StockDaily.code,
+            StockDaily.date,
+            StockDaily.A002_开盘价,
+            StockDaily.A003_最高价,
+            StockDaily.A004_最低价,
+            StockDaily.A005_收盘价,
+            StockDaily.A009_前收盘,
+            StockDaily.A011_涨跌幅,
+            StockDaily.A006_成交量,
+            StockDaily.A007_成交金额,
+            StockDaily.A008_换手率,
+            StockDaily.A013_流通市值,
+            StockDaily.A012_总市值
+        ).filter(
+            StockDaily.code == stock_code,
+            StockDaily.date.between(start, end)
+        )
         df = pd.DataFrame.from_records(query.all())
         df.columns = DAILY_COLS
+        df = _fill_zero(df)
         return df
+
+
+def _handle_minutely_data(df, exclude_lunch):
+    """
+    完成单个日期股票分钟级别数据处理
+    """
+    dts = pd.to_datetime(df[1].map(str) + ' ' + df[2])
+    ohlcv = pd.Series(data=df[3].values, index=dts).resample('T').ohlc()
+    ohlcv.fillna(method='ffill', inplace=True)
+    # 成交量原始数据单位为手，换为股
+    volumes = pd.Series(data=df[4].values, index=dts).resample('T').sum() * 100
+    ohlcv.insert(4, 'volume', volumes)
+    if exclude_lunch:
+        # 默认包含上下界
+        # 与交易日历保持一致，自31分开始
+        pre = ohlcv.between_time('9:25', '9:31')
+        add = pd.DataFrame({'open': pre['open'][0],
+                            'high': pre['high'].max(),
+                            'low': pre['low'][pre['low'] > 0.0].min(),
+                            'close': pre['close'][-1],
+                            'volume': pre['volume'].sum()
+                            }, index=pre.tail(1).index)
+        am = ohlcv.between_time('9:32', '11:30')
+        pm = ohlcv.between_time('13:00', '15:00')
+        return pd.concat([add, am, pm])
+    else:
+        return ohlcv
+
+
+def fetch_single_minutely_equity(stock_code, start, end, exclude_lunch=True):
+    """
+    从本地数据库读取单个股票期间分钟级别交易明细数据
+
+    注
+    --
+    1. 仅包含OHLCV列
+    2. 原始数据按分钟进行汇总，first(open),last(close),max(high),min(low),sum(volume)
+
+    Parameters
+    ----------
+    stock_code : str
+        要获取数据的股票代码
+    start_date : datetime-like
+        自开始日期(包含该日)
+    end_date : datetime-like
+        至结束日期
+    exclude_lunch ： bool
+        是否排除午休时间，默认”是“
+
+    return
+    ----------
+    DataFrame: OHLCV列的DataFrame对象。
+
+    Examples
+    --------
+    >>> symbol = '000333'
+    >>> start_date = '2018-4-1'
+    >>> end_date = pd.Timestamp('2018-4-19')
+    >>> df = fetch_single_minutely_equity(symbol, start_date, end_date)
+    >>> df.tail()
+                        close   high    low   open  volume
+    2018-04-19 14:56:00  51.55  51.56  51.50  51.55  376400
+    2018-04-19 14:57:00  51.55  51.55  51.55  51.55   20000
+    2018-04-19 14:58:00  51.55  51.55  51.55  51.55       0
+    2018-04-19 14:59:00  51.55  51.55  51.55  51.55       0
+    2018-04-19 15:00:00  51.57  51.57  51.57  51.57  353900
+    """
+    start = pd.Timestamp(start).date()
+    end = pd.Timestamp(end).date()
+    with session_scope() as sess:
+        query = sess.query(
+            DealDetail.code,
+            DealDetail.date,
+            DealDetail.A001_时间,
+            DealDetail.A002_价格,
+            DealDetail.A004_成交量
+        ).filter(
+            DealDetail.code == stock_code,
+            DealDetail.date.between(start, end)
+        )
+        df = pd.DataFrame.from_records(query.all())
+        if df.empty:
+            return pd.DataFrame()
+        return _handle_minutely_data(df, exclude_lunch)
 
 
 def fetch_single_quity_adjustments(stock_code, start, end):

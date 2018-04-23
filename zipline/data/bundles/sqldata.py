@@ -9,8 +9,8 @@ DAILY_COLS = ['symbol', 'date',
               'open', 'high', 'low', 'close',
               'prev_close', 'change_pct',
               'volume', 'amount', 'turnover', 'cmv', 'tmv']
-
-MINUTELY_COLS = ['symbol', 'date', 'open', 'high', 'low', 'close', 'volume']
+OHLCV_COLS = ['open', 'high', 'low', 'close', 'volume']
+MINUTELY_COLS = ['symbol', 'date'] + OHLCV_COLS
 
 ADJUSTMENT_COLS = ['symbol', 'date', 'amount', 'ratio',
                    'record_date', 'pay_date', 'listing_date']
@@ -83,26 +83,31 @@ def get_end_dates():
         return df
 
 
-def gen_asset_metadata():
+def gen_asset_metadata(only_in=True):
     """
     生成股票元数据
+
+    Paras
+    -----
+    only_in : bool
+        是否仅仅包含当前在市的股票，默认为真。
 
     Examples
     --------
     >>> df = gen_asset_metadata()
     >>> df.head()
     symbol asset_name first_traded last_traded exchange auto_close_date  \
-    0  000001       平安银行   1991-01-02  2018-04-17     SZSE      2018-04-18
-    1  000002       万 科Ａ   1991-01-02  2018-04-17     SZSE      2018-04-18
-    2  000003      PT金田Ａ   1991-01-02  2002-04-26     SZSE      2002-04-27
-    3  000004       国农科技   1991-01-02  2018-04-17     SZSE      2018-04-18
-    4  000005       世纪星源   1991-01-02  2018-04-17     SZSE      2018-04-18
+    0  000001       平安银行   1991-01-02  2018-04-19     SZSE      2018-04-20
+    1  000002       万 科Ａ   1991-01-02  2018-04-19     SZSE      2018-04-20
+    2  000004       国农科技   1991-01-02  2018-04-19     SZSE      2018-04-20
+    3  000005       世纪星源   1991-01-02  2018-04-19     SZSE      2018-04-20
+    4  000006       深振业Ａ   1992-04-27  2018-04-19     SZSE      2018-04-20
     start_date    end_date
-    0  1991-04-03         NaN
-    1  1991-01-29         NaN
-    2  1991-01-14  2002-06-14
-    3  1991-01-14         NaN
-    4  1990-12-10         NaN      
+    0  1991-04-03  2018-04-19
+    1  1991-01-29  2018-04-19
+    2  1991-01-14  2018-04-19
+    3  1990-12-10  2018-04-19
+    4  1992-04-27  2018-04-19      
     """
     columns = ['symbol', 'asset_name', 'first_traded', 'last_traded']
     with session_scope() as sess:
@@ -129,20 +134,25 @@ def gen_asset_metadata():
         # 对于未退市的结束日期，以最后交易日期代替
         df.loc[df.end_date.isna(), 'end_date'] = df.loc[df.end_date.isna(),
                                                         'last_traded']
+        if only_in:
+            df = df[~df.symbol.isin(end_dates.symbol)]
+            df.reset_index(inplace=True, drop=True)
         return df
+
 
 def _fill_zero(df):
     """填充因为停牌ohlc可能存在的0值"""
     # 将close放在第一列
-    ohlc_cols = ['close','open','high','low']
+    ohlc_cols = ['close', 'open', 'high', 'low']
     ohlc = df[ohlc_cols].copy()
     ohlc.replace(0.0, np.nan, inplace=True)
     ohlc.close.fillna(method='ffill', inplace=True)
     # 按列填充
-    ohlc.fillna(method='ffill', axis=1,inplace=True)
+    ohlc.fillna(method='ffill', axis=1, inplace=True)
     for col in ohlc_cols:
         df[col] = ohlc[col]
     return df
+
 
 def fetch_single_equity(stock_code, start, end):
     """
@@ -225,12 +235,22 @@ def _handle_minutely_data(df, exclude_lunch):
         # 默认包含上下界
         # 与交易日历保持一致，自31分开始
         pre = ohlcv.between_time('9:25', '9:31')
-        add = pd.DataFrame({'open': pre['open'][0],
-                            'high': pre['high'].max(),
-                            'low': pre['low'][pre['low'] > 0.0].min(),
-                            'close': pre['close'][-1],
-                            'volume': pre['volume'].sum()
-                            }, index=pre.tail(1).index)
+
+        def key(x): return x.date()
+        grouped = pre.groupby(key)
+        opens = grouped['open'].first()
+        highs = grouped['high'].max()
+        lows = grouped['low'].min()  # 考虑是否存在零值？
+        closes = grouped['close'].last()
+        volumes = grouped['volume'].sum()
+        index = pd.to_datetime([str(x) + ' 9:31' for x in opens.index])
+        add = pd.DataFrame({'open': opens.values,
+                            'high': highs.values,
+                            'low': lows.values,
+                            'close': closes.values,
+                            'volume': volumes.values
+                            },
+                           index=index)
         am = ohlcv.between_time('9:32', '11:30')
         pm = ohlcv.between_time('13:00', '15:00')
         return pd.concat([add, am, pm])
@@ -291,7 +311,7 @@ def fetch_single_minutely_equity(stock_code, start, end, exclude_lunch=True):
         )
         df = pd.DataFrame.from_records(query.all())
         if df.empty:
-            return pd.DataFrame()
+            return pd.DataFrame(columns=OHLCV_COLS)
         return _handle_minutely_data(df, exclude_lunch)
 
 
@@ -340,6 +360,6 @@ def fetch_single_quity_adjustments(stock_code, start, end):
         df = pd.DataFrame.from_records(query.all())
         if df.empty:
             # 返回一个空表
-            return df
+            return pd.DataFrame(columns=ADJUSTMENT_COLS)
         df.columns = ADJUSTMENT_COLS
         return df

@@ -371,7 +371,7 @@ def _make_bundle_core():
 
         start_session = bundle.start_session
         end_session = bundle.end_session
-
+ 
         if start_session is None or start_session < calendar.first_session:
             start_session = calendar.first_session
 
@@ -386,10 +386,8 @@ def _make_bundle_core():
         cachepath = cache_path(name, environ=environ)
         pth.ensure_directory(pth.data_path([name, timestr], environ=environ))
         pth.ensure_directory(cachepath)
-        if name.upper()[:2] == 'CN':
-            bcolz_writer_class = CnBcolzDailyBarWriter
-        else:
-            bcolz_writer_class = BcolzDailyBarWriter
+        is_cn = name.upper()[:2] == 'CN'
+        bcolz_writer_class = CnBcolzDailyBarWriter if is_cn else BcolzDailyBarWriter
         with dataframe_cache(cachepath, clean_on_failure=False) as cache, \
                 ExitStack() as stack:
             # we use `cleanup_on_failure=False` so that we don't purge the
@@ -423,17 +421,18 @@ def _make_bundle_core():
                     start_session,
                     end_session,
                     minutes_per_day=bundle.minutes_per_day,
+                    expectedlen=30*241,
                 )
                 assets_db_path = wd.getpath(*asset_db_relative(
                     name, timestr, environ=environ,
                 ))
                 asset_db_writer = AssetDBWriter(assets_db_path)
-
+                bcolz_reader = CnBcolzDailyBarReader(daily_bars_path) if is_cn else  BcolzDailyBarReader(daily_bars_path)
                 adjustment_db_writer = stack.enter_context(
                     SQLiteAdjustmentWriter(
                         wd.getpath(*adjustment_db_relative(
                             name, timestr, environ=environ)),
-                        BcolzDailyBarReader(daily_bars_path),
+                        bcolz_reader,
                         calendar.all_sessions,
                         overwrite=True,
                     )
@@ -529,7 +528,8 @@ def _make_bundle_core():
         if timestamp is None:
             timestamp = pd.Timestamp.utcnow()
         timestr = most_recent_data(name, timestamp, environ=environ)
-        if name.upper()[:2] == 'CN':
+        is_cn = name.upper()[:2] == 'CN'
+        if is_cn:
             return BundleData(
                 asset_finder=AssetFinder(
                     asset_db_path(name, timestr, environ=environ),

@@ -392,8 +392,7 @@ class BcolzMinuteBarWriter(object):
         The expected length of the dataset, used when creating the initial
         bcolz ctable.
 
-        If the expectedlen is not used, the chunksize and corresponding
-        compression ratios are not ideal.
+        如果不使用expectedlen，则块大小和相应的压缩比不理想。
 
         Defaults to supporting 15 years of NYSE equity market data.
         see: http://bcolz.blosc.org/opt-tips.html#informing-about-the-length-of-your-carrays # noqa

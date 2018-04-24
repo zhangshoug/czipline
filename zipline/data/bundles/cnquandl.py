@@ -115,9 +115,7 @@ def gen_symbol_data(symbol_map,
 
         yield asset_id, asset_data
 
-# 注意，注册函数名称要区别于quandl模块，否则会出错。名称随意。
-
-
+# # 注意，注册函数名称要区别于quandl模块，否则会出错。名称随意。
 @bundles.register('cndaily',
                   calendar_name='SZSH',
                   end_session=pd.Timestamp('now', tz='Asia/Shanghai'),
@@ -170,8 +168,6 @@ def cndaily_bundle(environ,
     )
 
 # 以cn开头，方可匹配相应的读写器
-
-
 @bundles.register('cntdaily',
                   calendar_name='SZSH',
                   end_session=pd.Timestamp('now', tz='Asia/Shanghai'),

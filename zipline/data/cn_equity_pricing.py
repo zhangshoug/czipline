@@ -429,10 +429,10 @@ class CnBcolzDailyBarWriter(object):
         # 检查OHLCV + 附加列数值是否溢出
         winsorise_uint32(raw_data, invalid_data_behavior,
                          'volume', *OHLC.union(EXTRA_COLUMNS))
-        # 值列统一调整为uint32
-        # 传入ohlc股价已经*1000，此处不再调整
-        processed = (
-            raw_data[list(OHLC.union(EXTRA_COLUMNS).union(['volume']))]).astype('uint32')
+        processed = (raw_data[list(OHLC)] * 1000).astype('uint32')
+        # # 列统一调整为uint32
+        for col in EXTRA_COLUMNS + ('volume',):
+            processed[col] = raw_data[col].astype('uint32')
         dates = raw_data.index.values.astype('datetime64[s]')
         check_uint32_safe(dates.max().view(np.int64), 'day')
         processed['day'] = dates.astype('uint32')
@@ -639,7 +639,6 @@ class CnBcolzDailyBarReader(SessionBarReader):
 
     def load_raw_arrays(self, columns, start_date, end_date, assets):
         # Assumes that the given dates are actually in calendar.
-        print(assets)
         start_idx = self.sessions.get_loc(start_date)
         end_idx = self.sessions.get_loc(end_date)
         first_rows, last_rows, offsets = self._compute_slices(
@@ -766,12 +765,12 @@ class CnBcolzDailyBarReader(SessionBarReader):
         ix = self.sid_day_index(sid, dt)
         field_value = self._spot_col(field)[ix]
         # # 调整因子
-        adj_ = 1 / ADJUST_FACTOR.get(field, 1)
+        # adj_ = 1 / ADJUST_FACTOR.get(field, 1)
         # # 价格为0时，需要返回nan
         if field in OHLC:
             if field_value == 0:
                 return nan
             else:
-                return field_value * adj_
+                return field_value #* adj_
         else:
             return field_value

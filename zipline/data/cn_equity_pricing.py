@@ -226,6 +226,7 @@ class CnBcolzDailyBarWriter(object):
         return "合并日线股票文件："
 
     def progress_bar_item_show_func(self, value):
+        # 显示股票代码
         return value if value is None else str(value[0]).zfill(6)
 
     def write(self,
@@ -638,6 +639,7 @@ class CnBcolzDailyBarReader(SessionBarReader):
 
     def load_raw_arrays(self, columns, start_date, end_date, assets):
         # Assumes that the given dates are actually in calendar.
+        print(assets)
         start_idx = self.sessions.get_loc(start_date)
         end_idx = self.sessions.get_loc(end_date)
         first_rows, last_rows, offsets = self._compute_slices(

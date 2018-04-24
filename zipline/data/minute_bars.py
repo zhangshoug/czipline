@@ -725,19 +725,18 @@ class BcolzMinuteBarWriter(object):
                 volume : float64|int64
             index : DatetimeIndex of market minutes.
         """
-        if df.empty:
-            return
-        cols = {
-            'open': df.open.values,
-            'high': df.high.values,
-            'low': df.low.values,
-            'close': df.close.values,
-            'volume': df.volume.values,
-        }
-        dts = df.index.values
-        # Call internal method, since DataFrame has already ensured matching
-        # index and value lengths.
-        self._write_cols(sid, dts, cols, invalid_data_behavior)
+        if not df.empty:
+            cols = {
+                'open': df.open.values,
+                'high': df.high.values,
+                'low': df.low.values,
+                'close': df.close.values,
+                'volume': df.volume.values,
+            }
+            dts = df.index.values
+            # Call internal method, since DataFrame has already ensured matching
+            # index and value lengths.
+            self._write_cols(sid, dts, cols, invalid_data_behavior)
 
     def write_cols(self, sid, dts, cols, invalid_data_behavior='warn'):
         """

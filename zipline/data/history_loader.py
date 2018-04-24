@@ -96,7 +96,9 @@ class HistoryCompatibleUSEquityAdjustmentReader(object):
         start = normalize_date(dts[0])
         end = normalize_date(dts[-1])
         adjs = {}
-        if field != 'volume':
+        #if field != 'volume':
+        # # 限定调整字段
+        if field in ('open', 'high', 'low', 'close'):
             mergers = self._adjustments_reader.get_adjustments_for_sid(
                 'mergers', sid)
             for m in mergers:
@@ -136,8 +138,12 @@ class HistoryCompatibleUSEquityAdjustmentReader(object):
             if start < dt <= end:
                 if field == 'volume':
                     ratio = 1.0 / s[1]
-                else:
+                # # else -> elif field in ('open', 'high', 'low', 'close')
+                elif field in ('open', 'high', 'low', 'close'): 
                     ratio = s[1]
+                # # 使用原值 1
+                else:
+                    ratio = 1                    
                 end_loc = dts.searchsorted(dt)
                 adj_loc = end_loc
                 mult = Float64Multiply(0,

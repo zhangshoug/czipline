@@ -937,7 +937,6 @@ class SQLiteAdjustmentWriter(object):
                             actual=actual,
                         ),
                     )
-
         frame.to_sql(
             tablename,
             self.conn,

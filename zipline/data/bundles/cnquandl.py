@@ -1,6 +1,8 @@
 """
 构造股票日线数据集
-TODO：检查日期是否类型：datetime64[s]？datetime64[ns]？
+
+备注：
+    1. 如使用用int(stock_code)代表sid，必须在写入资产元数据时，提供sid列
 """
 
 import pandas as pd
@@ -11,7 +13,7 @@ from ..constants import ADJUST_FACTOR, TEST_SYMBOLS
 from .sqldata import (fetch_single_equity, fetch_single_quity_adjustments,
                       gen_asset_metadata, fetch_single_minutely_equity)
 
-log = Logger(__name__)
+log = Logger('cnquandl')
 
 
 def _to_sid(x):
@@ -114,6 +116,8 @@ def gen_symbol_data(symbol_map,
         yield asset_id, asset_data
 
 # 注意，注册函数名称要区别于quandl模块，否则会出错。名称随意。
+
+
 @bundles.register('cndaily',
                   calendar_name='SZSH',
                   end_session=pd.Timestamp('now', tz='Asia/Shanghai'),
@@ -133,7 +137,8 @@ def cndaily_bundle(environ,
     """
     log.info('读取股票元数据......')
     metadata = gen_asset_metadata(False)
-
+    # 资产元数据写法要求添加sid列！！！
+    metadata['sid'] = metadata.symbol.map(_to_sid)
     symbol_map = metadata.symbol
     sessions = calendar.sessions_in_range(start_session, end_session)
 
@@ -158,11 +163,15 @@ def cndaily_bundle(environ,
     )
 
     adjustment_writer.write(
-        splits=None if len(splits) == 0 else pd.concat(splits, ignore_index=True),
-        dividends=None if len(dividends) == 0 else pd.concat(dividends, ignore_index=True),
+        splits=None if len(splits) == 0 else pd.concat(
+            splits, ignore_index=True),
+        dividends=None if len(dividends) == 0 else pd.concat(
+            dividends, ignore_index=True),
     )
 
 # 以cn开头，方可匹配相应的读写器
+
+
 @bundles.register('cntdaily',
                   calendar_name='SZSH',
                   end_session=pd.Timestamp('now', tz='Asia/Shanghai'),
@@ -185,6 +194,7 @@ def cntdaily_bundle(environ,
     metadata = gen_asset_metadata(False)
     metadata = metadata[metadata.symbol.isin(TEST_SYMBOLS)]
     metadata.reset_index(inplace=True, drop=True)
+    metadata['sid'] = metadata.symbol.map(_to_sid)
     sessions = calendar.sessions_in_range(start_session, end_session)
 
     symbol_map = metadata.symbol
@@ -204,13 +214,15 @@ def cntdaily_bundle(environ,
         ),
         show_progress=show_progress,
     )
-
     adjustment_writer.write(
-        splits=None if len(splits) == 0 else pd.concat(splits, ignore_index=True),
-        dividends=None if len(dividends) == 0 else pd.concat(dividends, ignore_index=True),
+        splits=pd.concat(splits, ignore_index=True) if len(splits) else None,
+        dividends=pd.concat(dividends, ignore_index=True) if len(
+            dividends) else None,
     )
 
 # 不可包含退市或者暂停上市的股票代码
+
+
 @bundles.register('cnminutely',
                   calendar_name='SZSH',
                   start_session=pd.Timestamp(
@@ -232,7 +244,7 @@ def cnminutely_bundle(environ,
     """
     log.info('读取股票元数据......')
     metadata = gen_asset_metadata()
-
+    metadata['sid'] = metadata.symbol.map(_to_sid)
     symbol_map = metadata.symbol
     sessions = calendar.sessions_in_range(start_session, end_session)
 
@@ -257,16 +269,20 @@ def cnminutely_bundle(environ,
     )
 
     adjustment_writer.write(
-        splits=None if len(splits) == 0 else pd.concat(splits, ignore_index=True),
-        dividends=None if len(dividends) == 0 else pd.concat(dividends, ignore_index=True),
+        splits=None if len(splits) == 0 else pd.concat(
+            splits, ignore_index=True),
+        dividends=None if len(dividends) == 0 else pd.concat(
+            dividends, ignore_index=True),
     )
 
 # 不可包含退市或者暂停上市的股票代码
+
+
 @bundles.register('cntminutely',
                   calendar_name='SZSH',
                   start_session=pd.Timestamp(
                       'now', tz='Asia/Shanghai') - pd.Timedelta(days=30),
-                  end_session=pd.Timestamp('now', tz='Asia/Shanghai'),                  
+                  end_session=pd.Timestamp('now', tz='Asia/Shanghai'),
                   minutes_per_day=241)
 def cntminutely_bundle(environ,
                        asset_db_writer,
@@ -286,6 +302,7 @@ def cntminutely_bundle(environ,
     metadata = gen_asset_metadata()
     metadata = metadata[metadata.symbol.isin(TEST_SYMBOLS)]
     metadata.reset_index(inplace=True, drop=True)
+    metadata['sid'] = metadata.symbol.map(_to_sid)
     sessions = calendar.sessions_in_range(start_session, end_session)
 
     symbol_map = metadata.symbol
@@ -307,6 +324,8 @@ def cntminutely_bundle(environ,
     )
 
     adjustment_writer.write(
-        splits=None if len(splits) == 0 else pd.concat(splits, ignore_index=True),
-        dividends=None if len(dividends) == 0 else pd.concat(dividends, ignore_index=True),
+        splits=None if len(splits) == 0 else pd.concat(
+            splits, ignore_index=True),
+        dividends=None if len(dividends) == 0 else pd.concat(
+            dividends, ignore_index=True),
     )

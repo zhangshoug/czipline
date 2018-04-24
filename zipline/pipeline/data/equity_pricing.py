@@ -15,3 +15,19 @@ class USEquityPricing(DataSet):
     low = Column(float64_dtype)
     close = Column(float64_dtype)
     volume = Column(float64_dtype)
+
+
+class CNEquityPricing(DataSet):
+    """
+    Dataset representing daily trading prices and volumes.
+    """
+    open = Column(float64_dtype)
+    high = Column(float64_dtype)
+    low = Column(float64_dtype)
+    close = Column(float64_dtype)
+    volume = Column(float64_dtype)
+    prev_close = Column(float64_dtype)
+    turnover = Column(float64_dtype)
+    amount = Column(float64_dtype)
+    tmv = Column(float64_dtype)
+    cmv = Column(float64_dtype)

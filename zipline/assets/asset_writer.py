@@ -701,6 +701,7 @@ class AssetDBWriter(object):
         # Check whether identifier columns have been provided.
         # If they have, set the index to this column.
         # If not, assume the index already cotains the identifier information.
+        # # 如果自定义标示，则须在资产元数据中包含sid列，否则会出现Keyerror
         for df, id_col in [(equities, 'sid'),
                            (futures, 'sid'),
                            (exchanges, 'exchange'),

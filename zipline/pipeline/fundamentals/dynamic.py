@@ -19,7 +19,7 @@ from .base import STOCK_DB, bcolz_table_path
 from .utils import _normalize_ad_ts_sid
 
 LABEL_MAPS = {'日期': 'asof_date', '股票代码': 'sid'}
-DYNAMIC_TABLES = ['adjustments', 'margins', 'special_treatments']
+DYNAMIC_TABLES = ['adjustments', 'margins', 'special_treatments','short_names']
 
 logger = Logger('动态数据')
 
@@ -44,6 +44,8 @@ def normalized_margins_data(df):
 
 def normalized_short_names_data(df):
     """股票简称数据"""
+    # 股票未上市或者新上市，暂无股票代码
+    df = df[~df['股票代码'].isna()].copy()
     df.drop(['更新时间', '序号', '备注说明'], axis=1, inplace=True)
     df.rename(columns=LABEL_MAPS, inplace=True)
     df.rename(columns={'股票简称': 'short_name'}, inplace=True)

@@ -316,7 +316,7 @@ class Fundamentals(object):
     @classlazyval
     def treatment(self):
         """股票特别处理（单列）"""
-        return normalized_special_treatment_data().treatment
+        return from_bcolz_data(table_name='special_treatments').treatment
 
     @classlazyval
     def annual_dividend(self):

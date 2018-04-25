@@ -1,0 +1,324 @@
+import re
+import bcolz
+import blaze
+from odo import discover
+
+from cswd.sql.constants import (BALANCESHEET_ITEM_MAPS,
+                                CASHFLOWSTATEMENT_ITEM_MAPS, CHNL_ITEM_MAPS,
+                                CZNL_ITEM_MAPS, MARGIN_MAPS,
+                                PROFITSTATEMENT_ITEM_MAPS, YLNL_ITEM_MAPS,
+                                YYNL_ITEM_MAPS, ZYZB_ITEM_MAPS)
+from zipline.utils.memoize import classlazyval
+
+from ..data.dataset import BoundColumn
+from ..loaders.blaze import from_blaze, global_loader
+from .base import bcolz_table_path
+from .constants import MARKET_MAPS, SECTOR_NAMES, SUPER_SECTOR_NAMES
+from .utils import (_normalized_dshape,
+                    make_default_missing_values_for_expr)
+
+ITEM_CODE_PATTERN = re.compile(r'A\d{3}')
+
+
+def verify_code(code):
+    if not re.match(ITEM_CODE_PATTERN, code):
+        raise ValueError('编码格式应为A+三位整数。输入{}'.format(code))
+
+
+def from_bcolz_data(table_name):
+    """读取bcolz格式的数据，生成DataSet"""
+    rootdir = bcolz_table_path(table_name)
+    ctable = bcolz.ctable(rootdir=rootdir, mode='r')
+    df = ctable.todataframe()
+    # 如果使用下面注释的方法，会出现以下错误
+    # can't compare offset-naive and offset-aware datetimes
+    # raw_dshape = discover(ctable)
+    # df_dshape = _normalized_dshape(raw_dshape)
+    # expr = blaze.data(ctable, name=table_name, dshape=df_dshape)
+    raw_dshape = discover(df)
+    df_dshape = _normalized_dshape(raw_dshape)
+    expr = blaze.data(df, name=table_name, dshape=df_dshape)
+    return from_blaze(expr,
+                      loader=global_loader,
+                      no_deltas_rule='ignore',
+                      no_checkpoints_rule='ignore',
+                      #   deltas=None,
+                      #   checkpoints=None,
+                      missing_values=make_default_missing_values_for_expr(expr))
+
+
+def query_maps(table_name, attr_name):
+    """查询bcolz表中属性值"""
+    rootdir = bcolz_table_path(table_name)
+    ct = bcolz.open(rootdir)
+    return ct.attrs[attr_name]
+
+
+class Fundamentals(object):
+    """股票基础数据集容器类"""
+    @staticmethod
+    def has_column(column):
+        """简单判定列是否存在于`Fundamentals`各数据集中"""
+        return type(column) == BoundColumn
+
+    #=======================根据数据集列编码查询列名称=================#
+    # 数据集列使用四位编码，首位为A，其余按原始序列连续编号
+    # 要查询列所代表的具体含义，使用下面方法
+    # 输入A001之类的编码
+    @staticmethod
+    def margin_col_name(code):
+        """查询融资融券列名称（输入编码）"""
+        verify_code(code)
+        return MARGIN_MAPS[code]
+
+    @staticmethod
+    def balancesheet_col_name(code):
+        """查询资产负债表所对应的科目名称（输入编码）"""
+        verify_code(code)
+        return BALANCESHEET_ITEM_MAPS[code]
+
+    @staticmethod
+    def profit_col_name(code):
+        """查询利润表所对应的科目名称（输入编码）"""
+        verify_code(code)
+        return PROFITSTATEMENT_ITEM_MAPS[code]
+
+    @staticmethod
+    def cashflow_col_name(code):
+        """查询现金流量表列名称（输入编码）"""
+        verify_code(code)
+        return CASHFLOWSTATEMENT_ITEM_MAPS[code]
+
+    @staticmethod
+    def key_financial_indicator_col_name(code):
+        """查询主要财务指标列名称（输入编码）"""
+        verify_code(code)
+        return ZYZB_ITEM_MAPS[code]
+
+    @staticmethod
+    def earnings_ratio_col_name(code):
+        """查询盈利能力指标列名称（输入编码）"""
+        verify_code(code)
+        return YLNL_ITEM_MAPS[code]
+
+    @staticmethod
+    def solvency_ratio_col_name(code):
+        """查询偿还能力指标名称（输入编码）"""
+        verify_code(code)
+        return CHNL_ITEM_MAPS[code]
+
+    @staticmethod
+    def growth_ratio_col_name(code):
+        """查询成长能力指标名称（输入编码）"""
+        verify_code(code)
+        return CZNL_ITEM_MAPS[code]
+
+    @staticmethod
+    def operation_ratio_col_name(code):
+        """查询营运能力指标名称（输入编码）"""
+        verify_code(code)
+        return YYNL_ITEM_MAPS[code]
+
+    @staticmethod
+    def concept_col_name(code):
+        """股票概念中文名称（输入编码）"""
+        table_name = 'infoes'
+        attr_name = 'concept'
+        maps = query_maps(table_name, attr_name)
+        return maps[code]
+
+    #===================根据数据集列名称关键字模糊查询列编码===============#
+    # 有时需要根据列关键字查找列编码，使用下面方法
+    # 输入关键字查询列编码
+    @staticmethod
+    def query_balancesheet_code(key):
+        """根据名称关键词模糊查询资产负债表项目编码"""
+        out = {k: v for k, v in BALANCESHEET_ITEM_MAPS.items() if key in v}
+        return out
+
+    @staticmethod
+    def query_profit_code(key):
+        """根据名称关键词模糊查询利润表项目编码"""
+        out = {k: v for k, v in PROFITSTATEMENT_ITEM_MAPS.items() if key in v}
+        return out
+
+    @staticmethod
+    def query_cashflow_code(key):
+        """根据名称关键词模糊查询现金流量表项目编码"""
+        out = {k: v for k, v in CASHFLOWSTATEMENT_ITEM_MAPS.items()
+               if key in v}
+        return out
+
+    @staticmethod
+    def query_key_financial_indicator_code(key):
+        """根据名称关键词模糊查询主要财务指标表项目编码"""
+        out = {k: v for k, v in ZYZB_ITEM_MAPS.items() if key in v}
+        return out
+
+    @staticmethod
+    def query_earnings_ratio_code(key):
+        """根据名称关键词模糊查询盈利能力指标项目编码"""
+        out = {k: v for k, v in YLNL_ITEM_MAPS.items() if key in v}
+        return out
+
+    @staticmethod
+    def query_solvency_ratio_code(key):
+        """根据名称关键词模糊查询偿还能力指标项目编码"""
+        out = {k: v for k, v in CHNL_ITEM_MAPS.items() if key in v}
+        return out
+
+    @staticmethod
+    def query_growth_ratio_code(key):
+        """根据名称关键词模糊查询成长能力指标项目编码"""
+        out = {k: v for k, v in CZNL_ITEM_MAPS.items() if key in v}
+        return out
+
+    @staticmethod
+    def query_operation_ratio_code(key):
+        """根据名称关键词模糊查询营运能力指标项目编码"""
+        out = {k: v for k, v in YYNL_ITEM_MAPS.items() if key in v}
+        return out
+
+    @staticmethod
+    def query_concept_code(key):
+        """模糊查询概念编码（输入概念关键词）"""
+        table_name = 'infoes'
+        attr_name = 'concept'
+        maps = query_maps(table_name, attr_name)
+        out = {k: v for k, v in maps.items() if key in v}
+        return out
+
+    #========================编码中文含义========================#
+    # 为提高读写速度，文本及类别更改为整数编码，查找整数所代表的含义，使用
+    # 下列方法。数字自0开始，长度为len(类别)
+    # 输入数字（如触发Keyerror，请减少数值再次尝试
+    @staticmethod
+    def supper_sector_cname(code):
+        """超级部门编码含义"""
+        code = str(code)
+        table_name = 'infoes'
+        attr_name = 'super_sector_code'
+        maps = query_maps(table_name, attr_name)
+        return maps  # [code]
+
+    @staticmethod
+    def sector_cname(code):
+        """部门编码含义"""
+        code = str(code)
+        table_name = 'infoes'
+        attr_name = 'sector_code'
+        maps = query_maps(table_name, attr_name)
+        return maps[code]
+
+    @staticmethod
+    def market_cname(code):
+        """市场版块编码含义"""
+        code = str(code)
+        table_name = 'infoes'
+        attr_name = 'market'
+        maps = query_maps(table_name, attr_name)
+        return maps[code]
+
+    @staticmethod
+    def region_cname(code):
+        """地域版块编码含义"""
+        code = str(code)
+        table_name = 'infoes'
+        attr_name = 'region'
+        maps = query_maps(table_name, attr_name)
+        return maps[code]
+
+    @staticmethod
+    def csrc_industry_cname(code):
+        """证监会行业编码含义"""
+        code = str(code)
+        table_name = 'infoes'
+        attr_name = 'csrc_industry'
+        maps = query_maps(table_name, attr_name)
+        return maps[code]
+
+    @staticmethod
+    def ths_industry_cname(code):
+        """同花顺行业编码含义"""
+        code = str(code)
+        table_name = 'infoes'
+        attr_name = 'ths_industry'
+        maps = query_maps(table_name, attr_name)
+        return maps[code]
+
+    @staticmethod
+    def cn_industry_cname(code):
+        """国证行业编码含义"""
+        code = str(code)
+        table_name = 'infoes'
+        attr_name = 'cn_industry'
+        maps = query_maps(table_name, attr_name)
+        return maps[code]
+
+    #========================数据集========================#
+
+    @classlazyval
+    def info(self):
+        """股票静态信息数据集"""
+        return from_bcolz_data(table_name='infoes')
+
+    @classlazyval
+    def balance_sheet(self):
+        """资产负债数据集"""
+        return from_bcolz_data(table_name='balance_sheets')
+
+    @classlazyval
+    def profit_statement(self):
+        """利润表数据集"""
+        return from_bcolz_data(table_name='profit_statements')
+
+    @classlazyval
+    def cash_flow(self):
+        """现金流量表数据集"""
+        return from_bcolz_data(table_name='cashflow_statements')
+
+    @classlazyval
+    def key_financial_indicator(self):
+        """主要财务指标数据集"""
+        return from_bcolz_data(table_name='zyzbs')
+
+    @classlazyval
+    def earnings_ratio(self):
+        """盈利能力指标数据集"""
+        return from_bcolz_data(table_name='ylnls')
+
+    @classlazyval
+    def solvency_ratio(self):
+        """偿还能力指标数据集"""
+        return from_bcolz_data(table_name='chnls')
+
+    @classlazyval
+    def growth_ratio(self):
+        """成长能力指标数据集"""
+        return from_bcolz_data(table_name='cznls')
+
+    @classlazyval
+    def operation_ratio(self):
+        """营运能力指标数据集"""
+        return from_bcolz_data(table_name='yynls')
+
+    @classlazyval
+    def margin(self):
+        """融资融券数据集"""
+        return from_bcolz_data(table_name='margins')
+
+    #========================单列========================#
+    @classlazyval
+    def short_name(self):
+        """股票简称（单列）"""
+        return from_bcolz_data(table_name='short_names').short_name
+
+    @classlazyval
+    def treatment(self):
+        """股票特别处理（单列）"""
+        return normalized_special_treatment_data().treatment
+
+    @classlazyval
+    def annual_dividend(self):
+        """年度股利（单列）"""
+        return from_bcolz_data(table_name='adjustments').amount

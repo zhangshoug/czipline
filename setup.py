@@ -298,7 +298,7 @@ setup(
     entry_points={
         'console_scripts': [
             'zipline = zipline.__main__:main',
-            'sql_to_bcolz = zipline.tasks:main'
+            'sql-to-bcolz = zipline.tasks:main'
         ],
     },
     author='Quantopian Inc.',

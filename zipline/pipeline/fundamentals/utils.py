@@ -1,27 +1,16 @@
 from collections import OrderedDict
-from datashape import var, Record, Option
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+from datashape import (Date, DateTime, Option, Record, String, boolean,
+                       integral, var)
 
-from datashape import (
-    Date,
-    DateTime,
-    Option,
-    String,
-    boolean,
-    integral
-)
+from zipline.utils.numpy_utils import (bool_dtype, datetime64ns_dtype,
+                                       default_missing_value_for_dtype,
+                                       float64_dtype, int64_dtype)
 
-from zipline.utils.numpy_utils import (default_missing_value_for_dtype, int64_dtype,
-                                       datetime64ns_dtype)
-
-#from zipline.utils.input_validation import expect_element
-
-from ..common import (
-    AD_FIELD_NAME,
-    SID_FIELD_NAME,
-    TS_FIELD_NAME
-)
+from ..common import AD_FIELD_NAME, SID_FIELD_NAME, TS_FIELD_NAME
+from ..loaders.blaze.core import datashape_type_to_numpy
 
 
 def _normalized_dshape(input_dshape):
@@ -67,27 +56,11 @@ def make_default_missing_values_for_expr(expr):
     """为表达式生成各字段的缺省默认值"""
     missing_values = {}
     for name, type_ in expr.dshape.measure.fields:
-        # 可选项目，需要使用选项内部类型
-        if isinstance(type_, Option):
-            from_t = type_.ty
+        n_type = datashape_type_to_numpy(type_)
+        if n_type is not int64_dtype:
+            missing_values[name] = default_missing_value_for_dtype(n_type)
         else:
-            from_t = type_
-
-        if isinstance(from_t, Date):
-            missing_values[name] = default_missing_value_for_dtype(
-                datetime64ns_dtype)
-        elif isinstance(from_t, DateTime):
-            missing_values[name] = default_missing_value_for_dtype(
-                datetime64ns_dtype)
-        elif isinstance(from_t, String):
-            missing_values[name] = 'unknown'
-        elif from_t in boolean:
-            missing_values[name] = False
-        #elif from_t in integral:
-        elif from_t is int64_dtype:
             missing_values[name] = -1
-        else:
-            missing_values[name] = np.nan
     return missing_values
 
 
@@ -98,6 +71,7 @@ def make_default_missing_values_for_df(dtypes):
     for f_name, type_ in dtypes.items():
         name = type_.name
         if name.startswith('int'):
+            # # 应为0
             missing_values[f_name] = 0
         elif name.startswith('object'):
             missing_values[f_name] = 'unknown'

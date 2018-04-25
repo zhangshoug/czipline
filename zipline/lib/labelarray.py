@@ -335,7 +335,8 @@ class LabelArray(ndarray):
                 # buffer isn't writeable.
                 self.categories.copy(),
                 ordered=False,
-                name=name,
+                # # 新版本取消了name参数
+                # name=name,
             )
 
     def as_categorical_frame(self, index, columns, name=None):

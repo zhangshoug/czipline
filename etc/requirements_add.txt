@@ -9,3 +9,6 @@ git+https://github.com/liudengfeng/odo#egg=odo
 
 git+https://github.com/liudengfeng/blaze#egg=blaze
 
+# empyrical
+git+https://github.com/liudengfeng/empyrical#egg=empyrical
+

@@ -37,6 +37,7 @@ class SimpleLedgerField(object):
         The name of the field to populate in the packet. If not provided,
         ``ledger_field`` will be used.
     """
+
     def __init__(self, ledger_field, packet_field=None):
         self._get_ledger_field = op.attrgetter(ledger_field)
         if packet_field is None:
@@ -77,6 +78,7 @@ class DailyLedgerField(object):
         The name of the field to populate in the packet. If not provided,
         ``ledger_field`` will be used.
     """
+
     def __init__(self, ledger_field, packet_field=None):
         self._get_ledger_field = op.attrgetter(ledger_field)
         if packet_field is None:
@@ -118,6 +120,7 @@ class StartOfPeriodLedgerField(object):
         The name of the field to populate in the packet. If not provided,
         ``ledger_field`` will be used.
     """
+
     def __init__(self, ledger_field, packet_field=None):
         self._get_ledger_field = op.attrgetter(ledger_field)
         if packet_field is None:
@@ -161,6 +164,7 @@ class StartOfPeriodLedgerField(object):
 class Returns(object):
     """Tracks the daily and cumulative returns of the algorithm.
     """
+    # # 遗漏self?
     def _end_of_period(field,
                        packet,
                        ledger,
@@ -181,6 +185,7 @@ class BenchmarkReturnsAndVolatility(object):
     """Tracks daily and cumulative returns for the benchmark as well as the
     volatility of the benchmark returns.
     """
+
     def start_of_simulation(self,
                             ledger,
                             emission_rate,
@@ -259,6 +264,7 @@ class BenchmarkReturnsAndVolatility(object):
 class PNL(object):
     """Tracks daily and cumulative PNL.
     """
+
     def start_of_simulation(self,
                             ledger,
                             emission_rate,
@@ -299,6 +305,7 @@ class CashFlow(object):
     -----
     For historical reasons, this field is named 'capital_used' in the packets.
     """
+
     def start_of_simulation(self,
                             ledger,
                             emission_rate,
@@ -336,6 +343,7 @@ class CashFlow(object):
 class Orders(object):
     """Tracks daily orders.
     """
+
     def end_of_bar(self,
                    packet,
                    ledger,
@@ -356,6 +364,7 @@ class Orders(object):
 class Transactions(object):
     """Tracks daily transactions.
     """
+
     def end_of_bar(self,
                    packet,
                    ledger,
@@ -376,6 +385,7 @@ class Transactions(object):
 class Positions(object):
     """Tracks daily positions.
     """
+
     def end_of_bar(self,
                    packet,
                    ledger,
@@ -405,6 +415,7 @@ class ReturnsStatistic(object):
         The name of the field. If not provided, it will be
         ``function.__name__``.
     """
+
     def __init__(self, function, field_name=None):
         if field_name is None:
             field_name = function.__name__
@@ -429,6 +440,7 @@ class ReturnsStatistic(object):
 class AlphaBeta(object):
     """End of simulation alpha and beta to the benchmark.
     """
+
     def start_of_simulation(self,
                             ledger,
                             emission_rate,
@@ -466,6 +478,7 @@ class AlphaBeta(object):
 class MaxLeverage(object):
     """Tracks the maximum account leverage.
     """
+
     def start_of_simulation(self, *args):
         self._max_leverage = 0.0
 
@@ -484,6 +497,7 @@ class MaxLeverage(object):
 class NumTradingDays(object):
     """Report the number of trading days.
     """
+
     def start_of_simulation(self, *args):
         self._num_trading_days = 0
 
@@ -511,6 +525,7 @@ class _ConstantCumulativeRiskMetric(object):
     This exists to maintain the existing structure of the perf packets. We
     should kill this as soon as possible.
     """
+
     def __init__(self, field, value):
         self._field = field
         self._value = value
@@ -525,6 +540,7 @@ class _ConstantCumulativeRiskMetric(object):
 class PeriodLabel(object):
     """Backwards compat, please kill me.
     """
+
     def start_of_session(self, ledger, session, data_portal):
         self._label = session.strftime('%Y-%m')
 

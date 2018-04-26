@@ -90,7 +90,7 @@ def has_data_for_dates(series_or_df, first_date, last_date):
     return (first <= first_date) and (last >= last_date)
 
 
-def load_market_data(trading_day=None, trading_days=None, bm_symbol='SPY',
+def load_market_data(trading_day=None, trading_days=None, bm_symbol='000300',
                      environ=None):
     """
     Load benchmark returns and treasury yield curves for the given calendar and
@@ -123,6 +123,7 @@ def load_market_data(trading_day=None, trading_days=None, bm_symbol='SPY',
 
     Notes
     -----
+    由于该数据自本地读取，无需使用本地文件缓存
 
     Both return values are DatetimeIndexed with values dated to midnight in UTC
     of each stored date.  The columns of `treasury_curves` are:
@@ -143,23 +144,13 @@ def load_market_data(trading_day=None, trading_days=None, bm_symbol='SPY',
     # we will fill missing benchmark data through latest trading date
     last_date = trading_days[trading_days.get_loc(now, method='ffill')]
 
-    br = ensure_benchmark_data(
-        bm_symbol,
-        first_date,
-        last_date,
-        now,
-        # We need the trading_day to figure out the close prior to the first
-        # date so that we can compute returns for the first date.
-        trading_day,
-        environ,
+    # A股指数代码为数字，其他国家为字符。据此标准，选择基准收益率函数
+    benchmark_fun = get_cn_benchmark_returns if bm_symbol.isdigit() else get_benchmark_returns
+    br = benchmark_fun(bm_symbol)
+    loader_module, _, _ = INDEX_MAPPING.get(
+        bm_symbol, INDEX_MAPPING['000300'] if bm_symbol.isdigit() else INDEX_MAPPING['SPY'],
     )
-    tc = ensure_treasury_data(
-        bm_symbol,
-        first_date,
-        last_date,
-        now,
-        environ,
-    )
+    tc = loader_module.get_treasury_data(first_date, last_date)
 
     # combine dt indices and reindex using ffill then bfill
     all_dt = br.index.union(tc.index)
@@ -168,6 +159,7 @@ def load_market_data(trading_day=None, trading_days=None, bm_symbol='SPY',
 
     benchmark_returns = br[br.index.slice_indexer(first_date, last_date)]
     treasury_curves = tc[tc.index.slice_indexer(first_date, last_date)]
+
     return benchmark_returns, treasury_curves
 
 
@@ -210,8 +202,8 @@ def ensure_benchmark_data(symbol, first_date, last_date, now, trading_day,
     # If no cached data was found or it was missing any dates then download the
     # necessary data.
     logger.info(
-        ('Downloading benchmark data for {symbol!r} '
-            'from {first_date} to {last_date}'),
+        ('获取本地基准收益率数据。指数代码：{symbol!r} '
+            '期间：{first_date}至{last_date}'),
         symbol=symbol,
         first_date=first_date - trading_day,
         last_date=last_date
@@ -276,8 +268,8 @@ def ensure_treasury_data(symbol, first_date, last_date, now, environ=None):
     # If no cached data was found or it was missing any dates then download the
     # necessary data.
     logger.info(
-        ('Downloading treasury data for {symbol!r} '
-            'from {first_date} to {last_date}'),
+        ('获取本地国库券资金成本数据，指数代码：{symbol!r} '
+            '期间：{first_date}至{last_date}'),
         symbol=symbol,
         first_date=first_date,
         last_date=last_date
@@ -324,8 +316,8 @@ def _load_cached_data(filename, first_date, last_date, now, resource_name,
             last_download_time = last_modified_time(path)
             if (now - last_download_time) <= ONE_HOUR:
                 logger.warn(
-                    "Refusing to download new {resource} data because a "
-                    "download succeeded at {time}.",
+                    "使用缓存{resource}数据，"
+                    "上次保存时间：{time}.",
                     resource=resource_name,
                     time=last_download_time,
                 )
@@ -341,7 +333,7 @@ def _load_cached_data(filename, first_date, last_date, now, resource_name,
             )
 
     logger.info(
-        "Cache at {path} does not have data from {start} to {end}.\n",
+        "在缓存路径'{path}'不存在从{start}至{end}的数据\n",
         start=first_date,
         end=last_date,
         path=path,

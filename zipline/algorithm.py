@@ -272,7 +272,6 @@ class TradingAlgorithm(object):
 
         # If an env has been provided, pop it
         self.trading_environment = kwargs.pop('env', None)
-
         if self.trading_environment is None:
             self.trading_environment = TradingEnvironment()
 
@@ -293,7 +292,7 @@ class TradingAlgorithm(object):
         # If a schedule has been provided, pop it. Otherwise, use NYSE.
         self.trading_calendar = kwargs.pop(
             'trading_calendar',
-            get_calendar('NYSE')
+            get_calendar('SZSH')
         )
 
         self.sim_params = kwargs.pop('sim_params', None)
@@ -551,6 +550,7 @@ class TradingAlgorithm(object):
             # get benchmark info from trading environment, which defaults to
             # downloading data from IEX Trading.
             benchmark_returns = self.trading_environment.benchmark_returns
+
         return BenchmarkSource(
             benchmark_asset=benchmark_asset,
             trading_calendar=self.trading_calendar,
@@ -1122,7 +1122,7 @@ class TradingAlgorithm(object):
         if calendar is None:
             cal = self.trading_calendar
         elif calendar is calendars.US_EQUITIES:
-            cal = get_calendar('NYSE')
+            cal = get_calendar('SZSH')
         elif calendar is calendars.US_FUTURES:
             cal = get_calendar('us_futures')
         else:

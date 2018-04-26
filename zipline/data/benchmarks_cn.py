@@ -14,10 +14,14 @@ def get_cn_benchmark_returns(symbol):
     """
     with session_scope() as sess:
         query = sess.query(
-            IndexDaily.date, IndexDaily.close
-        ).filter(IndexDaily.code == symbol)
+            IndexDaily.date, 
+            IndexDaily.change_pct
+        ).filter(
+            IndexDaily.code == symbol
+        )
         df = pd.DataFrame.from_records(query.all())
-        df.columns = ['date', 'close']
-        df.index = pd.DatetimeIndex(df['date'])
-        df.drop('date', axis=1, inplace=True)
-        return df.sort_index().tz_localize('UTC').pct_change(1).iloc[1:]
+        s = pd.Series(
+            data=df[1].values / 100,
+            index=pd.DatetimeIndex(df[0].values)
+        )
+        return s.sort_index().tz_localize('UTC').dropna()

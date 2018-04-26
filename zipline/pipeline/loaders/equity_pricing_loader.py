@@ -41,7 +41,7 @@ class USEquityPricingLoader(PipelineLoader):
         self.adjustments_loader = adjustments_loader
 
         cal = self.raw_price_loader.trading_calendar or \
-            get_calendar("NYSE")
+            get_calendar("SZSH")
 
         self._all_sessions = cal.all_sessions
 

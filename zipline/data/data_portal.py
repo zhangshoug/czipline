@@ -66,6 +66,7 @@ from zipline.errors import HistoryWindowStartsBeforeData
 
 log = Logger('DataPortal')
 
+# # 可供查询（资产、时间）组合所对应值的字段
 BASE_FIELDS = frozenset([
     "open",
     "high",
@@ -76,16 +77,23 @@ BASE_FIELDS = frozenset([
     "contract",
     "sid",
     "last_traded",
+    "amount",
+    "turnover",
+    "cmv",
+    "tmv",
+    "prev_close",
+    "change_pct",
 ])
-
+# # 对于股票日线原始数据，已经对数据进行了预处理，无需ffill
 OHLCV_FIELDS = frozenset([
-    "open", "high", "low", "close", "volume"
+    "open", "high", "low", "close", "volume", 
+    "amount","turnover","cmv","tmv", "prev_close","change_pct",
 ])
-
+# # 此前已经对不同的列是否参与调整进行了处理，无需额外控制
 OHLCVP_FIELDS = frozenset([
-    "open", "high", "low", "close", "volume", "price"
+    "open", "high", "low", "close", "volume", "price",
+    "amount","turnover","cmv","tmv", "prev_close","change_pct",
 ])
-
 HISTORY_FREQUENCIES = set(["1m", "1d"])
 
 DEFAULT_MINUTE_HISTORY_PREFETCH = 1560

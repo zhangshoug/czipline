@@ -72,7 +72,7 @@ from zipline.utils.memoize import lazyval
 from zipline.utils.cli import maybe_show_progress
 from ._equities import _compute_row_slices, _read_bcolz_data
 from ._adjustments import load_adjustments_from_sqlite
-
+from .constants import ADJUST_FACTOR
 
 logger = logbook.Logger('UsEquityPricing')
 
@@ -80,6 +80,9 @@ OHLC = frozenset(['open', 'high', 'low', 'close'])
 US_EQUITY_PRICING_BCOLZ_COLUMNS = (
     'open', 'high', 'low', 'close', 'volume', 'day', 'id'
 )
+# # 增加不参与调整的列
+EXTRA_COLUMNS = ('prev_close', 'turnover', 'amount', 'tmv', 'cmv')
+FULL_TABLE_COLUMNS = frozenset(US_EQUITY_PRICING_BCOLZ_COLUMNS + EXTRA_COLUMNS)
 SQLITE_ADJUSTMENT_COLUMN_DTYPES = {
     'effective_date': integer,
     'ratio': float,
@@ -184,12 +187,18 @@ class BcolzDailyBarWriter(object):
     --------
     zipline.data.us_equity_pricing.BcolzDailyBarReader
     """
+    # # 调整为实际输入列
     _csv_dtypes = {
-        'open': float64,
-        'high': float64,
-        'low': float64,
-        'close': float64,
-        'volume': float64,
+        'open':       float64,
+        'high':       float64,
+        'low':        float64,
+        'close':      float64,
+        'prev_close': float64,
+        'volume':     float64,
+        'amount':     float64,
+        'turnover':   float64,
+        'cmv':        float64,
+        'tmv':        float64,
     }
 
     def __init__(self, filename, calendar, start_session, end_session):
@@ -212,10 +221,11 @@ class BcolzDailyBarWriter(object):
 
     @property
     def progress_bar_message(self):
-        return "Merging daily equity files:"
+        return "合并股票文件："
 
     def progress_bar_item_show_func(self, value):
-        return value if value is None else str(value[0])
+        # # 显示股票代码
+        return value if value is None else str(value[0]).zfill(6)
 
     def write(self,
               data,
@@ -300,7 +310,7 @@ class BcolzDailyBarWriter(object):
         # Maps column name -> output carray.
         columns = {
             k: carray(array([], dtype=uint32))
-            for k in US_EQUITY_PRICING_BCOLZ_COLUMNS
+            for k in FULL_TABLE_COLUMNS  # # 所有列全部设定为uint32
         }
 
         earliest_date = None
@@ -388,9 +398,9 @@ class BcolzDailyBarWriter(object):
         full_table = ctable(
             columns=[
                 columns[colname]
-                for colname in US_EQUITY_PRICING_BCOLZ_COLUMNS
+                for colname in FULL_TABLE_COLUMNS # # 全部列
             ],
-            names=US_EQUITY_PRICING_BCOLZ_COLUMNS,
+            names=list(FULL_TABLE_COLUMNS), # # 列表类型
             rootdir=self._filename,
             mode='w',
         )
@@ -413,9 +423,13 @@ class BcolzDailyBarWriter(object):
         if isinstance(raw_data, ctable):
             # we already have a ctable so do nothing
             return raw_data
-
-        winsorise_uint32(raw_data, invalid_data_behavior, 'volume', *OHLC)
-        processed = (raw_data[list(OHLC)] * 1000).astype('uint32')
+        # winsorise_uint32(raw_data, invalid_data_behavior, 'volume', *OHLC)
+        # # 检查OHLCV + 附加列数值是否溢出
+        winsorise_uint32(raw_data, invalid_data_behavior,
+                         'volume', *OHLC.union(EXTRA_COLUMNS))
+        # processed = (raw_data[list(OHLC)] * 1000).astype('uint32')
+        # # 列统一调整为uint32，输入时，已经调整，无需再对OHLC调整
+        processed = (raw_data[list(OHLC.union(EXTRA_COLUMNS).union(['volume']))]).astype('uint32')
         dates = raw_data.index.values.astype('datetime64[s]')
         check_uint32_safe(dates.max().view(np.int64), 'day')
         processed['day'] = dates.astype('uint32')
@@ -501,7 +515,7 @@ class BcolzDailyBarReader(SessionBarReader):
         # Need to test keeping the entire array in memory for the course of a
         # process first.
         self._spot_cols = {}
-        self.PRICE_ADJUSTMENT_FACTOR = 0.001
+        self.PRICE_ADJUSTMENT_FACTOR = 1 # # 原始数据已经处理过，不必重复0.001
         self._read_all_threshold = read_all_threshold
 
     @lazyval
@@ -629,7 +643,7 @@ class BcolzDailyBarReader(SessionBarReader):
             assets,
         )
         read_all = len(assets) > self._read_all_threshold
-        return _read_bcolz_data(
+        raw_arrays = _read_bcolz_data(
             self._table,
             (end_idx - start_idx + 1, len(assets)),
             list(columns),
@@ -638,6 +652,11 @@ class BcolzDailyBarReader(SessionBarReader):
             offsets,
             read_all,
         )
+        # # 调整回原始数据（成交量、成交额、总市值、流通市值会丧失精度）
+        for i, col in enumerate(list(columns)):
+            adj = 1 / ADJUST_FACTOR.get(col, 1)
+            raw_arrays[i] = raw_arrays[i].dot(adj)
+        return raw_arrays
 
     def _spot_col(self, colname):
         """
@@ -737,17 +756,19 @@ class BcolzDailyBarReader(SessionBarReader):
             Raises a NoDataOnDate exception if the given day and sid is before
             or after the date range of the equity.
             Returns -1 if the day is within the date range, but the price is
-            0.
+            0.     
         """
         ix = self.sid_day_index(sid, dt)
-        price = self._spot_col(field)[ix]
-        if field != 'volume':
-            if price == 0:
+        field_value = self._spot_col(field)[ix]
+        adj = 1 / ADJUST_FACTOR.get(field, 1)
+        # # 价格为0时，需要返回nan
+        if field in OHLC:
+            if field_value == 0:
                 return nan
             else:
-                return price * 0.001
+                return field_value * adj
         else:
-            return price
+            return field_value * adj
 
 
 class PanelBarReader(SessionBarReader):

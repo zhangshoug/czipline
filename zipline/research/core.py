@@ -16,7 +16,7 @@ from zipline.data.bundles.core import load
 
 from zipline.pipeline.loaders.blaze import global_loader
 
-bundle = 'cndaily'
+bundle = 'cntdaily'
 
 bundle_data = load(bundle)
 
@@ -29,7 +29,7 @@ def choose_loader(column):
         return pipeline_loader
     elif Fundamentals.has_column(column):
         return global_loader
-    raise ValueError("No PipelineLoader registered for column %s." % column)
+    raise ValueError("`PipelineLoader`没有注册列 %s." % column)
 
 
 def run_pipeline(pipe, start, end):

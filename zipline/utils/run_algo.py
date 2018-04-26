@@ -20,7 +20,7 @@ from zipline.data import bundles
 from zipline.data.data_portal import DataPortal
 from zipline.finance import metrics
 from zipline.finance.trading import TradingEnvironment
-from zipline.pipeline.data import USEquityPricing
+from zipline.pipeline.data import USEquityPricing # # USEquityPricing->USEquityPricing
 from zipline.pipeline.loaders import USEquityPricingLoader
 from zipline.utils.calendars import get_calendar
 from zipline.utils.factory import create_simulation_parameters
@@ -122,7 +122,7 @@ def _run(handle_data,
             click.echo(algotext)
 
     if trading_calendar is None:
-        trading_calendar = get_calendar('NYSE')
+        trading_calendar = get_calendar('SHSZ')
 
     if trading_calendar.session_distance(start, end) < 1:
         raise _RunAlgoError(

@@ -9,7 +9,7 @@ from cswd.common.utils import sanitize_dates
 
 from zipline.pipeline import Pipeline
 from zipline.pipeline.engine import SimplePipelineEngine
-from zipline.pipeline.data import CNEquityPricing
+from zipline.pipeline.data import USEquityPricing
 from zipline.pipeline.loaders import USEquityPricingLoader
 from zipline.pipeline.fundamentals import Fundamentals
 from zipline.data.bundles.core import load
@@ -25,7 +25,7 @@ pipeline_loader = USEquityPricingLoader(bundle_data.equity_daily_bar_reader,
 
 
 def choose_loader(column):
-    if column in CNEquityPricing.columns:
+    if column in USEquityPricing.columns:
         return pipeline_loader
     elif Fundamentals.has_column(column):
         return global_loader

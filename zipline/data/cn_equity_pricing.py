@@ -74,7 +74,7 @@ from ._equities import _compute_row_slices, _read_bcolz_data
 from ._adjustments import load_adjustments_from_sqlite
 from .constants import ADJUST_FACTOR
 
-logger = logbook.Logger('CnEquityPricing')
+logger = logbook.Logger('USEquityPricing')
 
 OHLC = frozenset(['open', 'high', 'low', 'close'])
 US_EQUITY_PRICING_BCOLZ_COLUMNS = (

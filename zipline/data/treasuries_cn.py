@@ -40,6 +40,7 @@ def get_treasury_data(start_date, end_date):
         df.columns = TREASURY_COL_NAMES
         df.set_index(keys='date', inplace=True)
         df.index = pd.DatetimeIndex(df.index)
-        # 缺少7年数据，使用简单平均插值
+        # 缺少2/7年数据，使用简单平均插值
+        df['2year'] = (df['1year'] + df['3year']) / 2
         df['7year'] = (df['5year'] + df['10year']) / 2
     return df.tz_localize('UTC')

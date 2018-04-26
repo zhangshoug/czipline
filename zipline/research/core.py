@@ -16,7 +16,7 @@ from zipline.data.bundles.core import load
 
 from zipline.pipeline.loaders.blaze import global_loader
 
-bundle = 'cntdaily'
+bundle = 'cndaily' # 使用测试集时，更改为cntdaily
 
 bundle_data = load(bundle)
 

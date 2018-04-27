@@ -528,8 +528,8 @@ class TradingAlgorithm(object):
         # FIXME generalize these values
         before_trading_start_minutes = days_at_time(
             self.sim_params.sessions,
-            time(8, 45),
-            "US/Eastern"
+            time(9, 30),
+            "Asia/Shanghai"
         )
 
         return MinuteSimulationClock(

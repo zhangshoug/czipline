@@ -899,7 +899,7 @@ class Factor(RestrictedDTypeMixin, ComputableTerm):
             price = USEquityPricing.close.latest
             columns={
                 'PRICE': price,
-                'WINSOR_1: price.winsorize(
+                'WINSOR_1': price.winsorize(
                     min_percentile=0.25, max_percentile=0.75
                 ),
                 'WINSOR_2': price.winsorize(

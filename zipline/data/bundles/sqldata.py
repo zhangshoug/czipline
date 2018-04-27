@@ -83,6 +83,36 @@ def get_end_dates():
         return df
 
 
+def get_latest_short_name():
+    """
+    获取股票最新股票简称
+
+    Examples
+    --------
+    >>> df = get_end_dates()
+    >>> df.head()
+         symbol  asset_name
+    0     000001    平安银行
+    1     000002    万 科Ａ
+    2     000003   PT金田Ａ
+    3     000004    国农科技
+    4     000005    世纪星源     
+    """
+    col_names = ['symbol', 'asset_name']
+    with session_scope() as sess:
+        query = sess.query(
+            StockDaily.code,
+            StockDaily.A001_名称
+        ).group_by(
+            StockDaily.code
+        ).having(
+            func.max(StockDaily.date)
+        )
+        df = pd.DataFrame.from_records(query.all())
+        df.columns = col_names
+        return df
+
+
 def gen_asset_metadata(only_in=True):
     """
     生成股票元数据
@@ -109,13 +139,16 @@ def gen_asset_metadata(only_in=True):
     3  1990-12-10  2018-04-19
     4  1992-04-27  2018-04-19      
     """
-    columns = ['symbol', 'asset_name', 'first_traded', 'last_traded']
+    columns = ['symbol', 'first_traded', 'last_traded']
     with session_scope() as sess:
         query = sess.query(
             StockDaily.code,
-            StockDaily.A001_名称,
             func.min(StockDaily.date),
             func.max(StockDaily.date)
+        ).filter(
+            ~StockDaily.code.startswith('2')
+        ).filter(
+            ~StockDaily.code.startswith('9')
         ).group_by(
             StockDaily.code
         )
@@ -124,9 +157,12 @@ def gen_asset_metadata(only_in=True):
         df['exchange'] = df['symbol'].map(get_exchange)
         df['auto_close_date'] = df['last_traded'].map(
             lambda x: x + pd.Timedelta(days=1))
+        latest_name = get_latest_short_name()
         start_dates = get_start_dates()
         end_dates = get_end_dates()
         df = df.merge(
+            latest_name, 'left', on='symbol'
+        ).merge(
             start_dates, 'left', on='symbol'
         ).merge(
             end_dates, 'left', on='symbol'

@@ -19,7 +19,8 @@ from logbook import Logger
 
 from cswd.sql.base import session_scope
 from cswd.sql.models import Stock, Issue, Category, StockCategory, TradingCalendar
-from cswd.dataproxy.data_proxies import industry_stocks_reader
+# from cswd.dataproxy.data_proxies import industry_stocks_reader
+from cswd.websource.juchao import fetch_industry_stocks
 from .writer import write_dataframe
 
 
@@ -188,7 +189,9 @@ def cninfo_industry_info():
     并映射部门及超级部门分类
     """
     d = latest_trading_day()
-    df = industry_stocks_reader.read(date_=d, department='cninfo')
+    # 不需要使用代理
+    # df = industry_stocks_reader.read(date_=d, department='cninfo')
+    df = fetch_industry_stocks(date_=d, department='cninfo')
     # 更改部门代码
     sector_code = df['sector_code'].map(sector_code_name).values
     super_sector_code = map(supper_sector_code_name, sector_code)

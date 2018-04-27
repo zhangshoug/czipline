@@ -5,9 +5,12 @@ import pandas as pd
 from datashape import (Date, DateTime, Option, Record, String, boolean,
                        integral, var)
 
-from zipline.utils.numpy_utils import (bool_dtype, datetime64ns_dtype,
-                                       default_missing_value_for_dtype,
-                                       float64_dtype, int64_dtype)
+from zipline.utils.numpy_utils import (bool_dtype,
+                                       object_dtype,
+                                       int64_dtype,
+                                       float64_dtype,
+                                       datetime64ns_dtype,
+                                       default_missing_value_for_dtype)
 
 from ..common import AD_FIELD_NAME, SID_FIELD_NAME, TS_FIELD_NAME
 from ..loaders.blaze.core import datashape_type_to_numpy
@@ -53,14 +56,18 @@ def _normalize_ad_ts_sid(df, ndays=0):
 
 
 def make_default_missing_values_for_expr(expr):
-    """为表达式生成各字段的缺省默认值"""
+    """数据集输出时的字段缺省默认值"""
     missing_values = {}
     for name, type_ in expr.dshape.measure.fields:
         n_type = datashape_type_to_numpy(type_)
-        if n_type is not int64_dtype:
-            missing_values[name] = default_missing_value_for_dtype(n_type)
-        else:
+        if n_type is object_dtype:
+            missing_values[name] = '未定义'
+        elif n_type is bool_dtype:
+            missing_values[name] = False
+        elif n_type is int64_dtype:
             missing_values[name] = -1
+        else:
+            missing_values[name] = default_missing_value_for_dtype(n_type)
     return missing_values
 
 

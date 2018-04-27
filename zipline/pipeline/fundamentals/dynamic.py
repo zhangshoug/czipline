@@ -49,6 +49,8 @@ def normalized_short_names_data(df):
     df.drop(['更新时间', '序号', '备注说明'], axis=1, inplace=True)
     df.rename(columns=LABEL_MAPS, inplace=True)
     df.rename(columns={'股票简称': 'short_name'}, inplace=True)
+    # 原为实施日期，截止日期前移一天
+    df['asof_date'] = df['asof_date'] - pd.Timedelta(days=1)
     return df
 
 
@@ -59,6 +61,8 @@ def normalized_special_treatments_data(df):
     df = df[['股票代码', '日期', '特别处理']].copy()
     df.rename(columns=LABEL_MAPS, inplace=True)
     df.rename(columns={'特别处理': 'treatment'}, inplace=True)
+    # 原为实施日期，截止日期前移一天
+    df['asof_date'] = df['asof_date'] - pd.Timedelta(days=1) 
     return df
 
 

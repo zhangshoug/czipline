@@ -356,7 +356,7 @@ class TTMDividend(CustomFactor):
     ------
     trailing 12-month (TTM)
     """
-    inputs = [Fundamentals.dividend,
+    inputs = [Fundamentals.dividend.amount,
               Fundamentals.dividend.asof_date]
     # 一年的交易日不会超过260天
     window_length = 260

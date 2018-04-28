@@ -307,7 +307,12 @@ class Fundamentals(object):
         """融资融券数据集"""
         return from_bcolz_data(table_name='margins')
 
+    @classlazyval
+    def dividend(self):
+        """每股股利数据集"""
+        return from_bcolz_data(table_name='adjustments')
     #========================单列========================#
+
     @classlazyval
     def short_name(self):
         """股票简称（单列）"""
@@ -317,8 +322,3 @@ class Fundamentals(object):
     def treatment(self):
         """股票特别处理（单列）"""
         return from_bcolz_data(table_name='special_treatments').treatment
-
-    @classlazyval
-    def annual_dividend(self):
-        """年度股利（单列）"""
-        return from_bcolz_data(table_name='adjustments').amount

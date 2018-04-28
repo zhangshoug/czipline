@@ -25,13 +25,12 @@ logger = Logger('动态数据')
 
 
 def normalized_dividend_data(df):
-    """处理现金分红（调整到年初汇总）"""
+    """每股现金股利"""
     raw_df = df[['股票代码', '日期', '派息']].copy()
     raw_df.rename(columns=LABEL_MAPS, inplace=True)
     raw_df.rename(columns={'派息': 'amount'}, inplace=True)
-    raw_df.index = pd.to_datetime(raw_df['asof_date'])
-    res = raw_df.groupby('sid').resample('AS').sum().fillna(0.0)
-    return res.reset_index()
+    raw_df['asof_date'] = pd.to_datetime(raw_df['asof_date'])
+    return raw_df
 
 
 def normalized_margins_data(df):

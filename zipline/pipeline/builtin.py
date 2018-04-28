@@ -11,7 +11,8 @@ import numpy as np
 import pandas as pd
 
 from .data.equity_pricing import USEquityPricing
-from .factors import CustomFactor
+from .factors import CustomFactor, SimpleMovingAverage, DailyReturns
+from .filters import CustomFilter
 from .fundamentals.reader import Fundamentals
 
 
@@ -84,9 +85,6 @@ def QTradableStocksUS():
     return (v20 >= 20) & (v200 >= 180)
 
 
-QTradableStocks = QTradableStocksUS
-
-
 def IsNewShare(days=90):
     """
     次新股过滤器
@@ -108,3 +106,89 @@ def IsNewShare(days=90):
     """
     t_days = NDays()
     return t_days <= days
+
+
+def TopAverageAmount(N=500, window_length=21):
+    """
+    成交额前N位过滤
+
+    参数
+    _____
+    N：整数
+        取前N位。默认前500。
+    window_length：整数
+        窗口长度。默认21个交易日。
+
+    returns
+    -------
+    zipline.pipeline.Filter
+        成交额前N位股票过滤器
+
+    备注
+    ----
+        以窗口长度内平均成交额为标准        
+    """
+    high_amount = SimpleMovingAverage(inputs=[USEquityPricing.amount],
+                                      window_length=window_length).top(N)
+    return high_amount
+
+
+class IsYZZT(CustomFilter):
+    """
+    是否一字涨停
+
+    **Default Inputs:** None
+
+    **Default Window Length:** None
+
+    备注
+    ----
+    只要当天最高价等于最低价，且上涨，即为一字涨停。包含st涨停。
+    """
+    inputs = [USEquityPricing.close, USEquityPricing.high, USEquityPricing.low]
+    window_safe = True
+    window_length = 2
+
+    def _validate(self):
+        super(IsYZZT, self)._validate()
+        if self.window_length != 2:
+            raise ValueError('window_length值必须为2')
+
+    def compute(self, today, assets, out, cs, hs, ls):
+        is_yz = hs[-1] == ls[-1]
+        is_sz = cs[-1] > cs[0]
+        out[:] = is_yz & is_sz
+
+
+class IsYZDT(CustomFilter):
+    """
+    是否一字跌停
+
+    **Default Inputs:** None
+
+    **Default Window Length:** None
+
+    备注
+    ----
+    只要当天最高价等于最低价，且上涨，即为一字涨停。包含st涨停。
+    """
+    inputs = [USEquityPricing.close, USEquityPricing.high, USEquityPricing.low]
+    window_safe = True
+    window_length = 2
+
+    def _validate(self):
+        super(IsYZDT, self)._validate()
+        if self.window_length != 2:
+            raise ValueError('window_length值必须为2')
+
+    def compute(self, today, assets, out, cs, hs, ls):
+        is_yz = hs[-1] == ls[-1]
+        is_xd = cs[-1] < cs[0]
+        out[:] = is_yz & is_xd
+
+#==============================财务相关=============================#
+
+
+# 别名
+QTradableStocks = QTradableStocksUS
+TAA = TopAverageAmount

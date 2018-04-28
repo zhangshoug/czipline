@@ -340,7 +340,7 @@ class TTMSales(CustomFactor):
     def compute(self, today, assets, out, sales, asof_date):
         # 计算期间季度数发生变化的位置，简化计算量
         # 选取最近四个季度的日期所对应的位置
-        loc = changed_locations(asof_date.T[0], include_first=True)[-4:]
+        loc = changed_locations(asof_date[:, 0], include_first=True)[-4:]
         adj = quarterly_multiplier(asof_date[loc])
         # 将各季度调整为年销售额，然后再平均
         res = nanmean(np.multiply(sales[loc], adj), axis=0)
@@ -367,12 +367,31 @@ class TTMDividend(CustomFactor):
             raise ValueError('window_length值必须大于260,以确保获取一年的财务数据')
 
     def compute(self, today, assets, out, ds, asof_date):
+        def func(x): return x.month
+        mns = pd.Series(asof_date[:, 0]).map(func)
+        # mns = np.apply_along_axis(func, 0, asof_date[:,0])
         # 选取最近12个月的日期所对应的位置
-        loc = changed_locations(asof_date.T[0], include_first=True)[-12:]
-        out[:] = nansum(ds[loc], axis=0)
+        loc = changed_locations(mns, include_first=True)[-12:]
+        out[:] = nanmean(ds[loc], axis=0)
 
 
 #==============================估值相关=============================#
+# 参考网址：https://www.quantopian.com/help/fundamentals#valuation
+def book_value_per_share():
+    """普通股股东权益/稀释流通股"""
+    # 股东权益 / 实收资本
+    return Fundamentals.balance_sheet.A107.latest / Fundamentals.balance_sheet.A095.latest
+
+
+def book_value_yield():
+    """BookValuePerShare / Price"""
+    return book_value_per_share() / USEquityPricing.close.latest
+
+
+def buy_back_yield():
+    """The net repurchase of shares outstanding over the market capital of the company. 
+    It is a measure of shareholder return."""
+    return NotImplementedError()
 
 
 def market_cap():
@@ -381,8 +400,26 @@ def market_cap():
 
 
 def trailing_dividend_yield():
-    """尾部12个月每股股利之和/股价"""
+    """尾部12个月每股股利平均值/股价"""
     return TTMDividend() / USEquityPricing.close.latest
+
+
+def earning_yield():
+    """稀释每股收益率(稀释每股收益/价格)"""
+    return Fundamentals.profit_statement.A045.latest / USEquityPricing.close.latest
+
+
+def ev_to_ebitda():
+    """
+    This reflects the fair market value of a company, and allows comparability to other 
+    companies as this is capital structure-neutral.
+    """
+    return NotImplementedError()
+
+
+def fcf_per_share():
+    """Free Cash Flow / Average Diluted Shares Outstanding"""
+    return NotImplementedError()
 
 
 # 别名

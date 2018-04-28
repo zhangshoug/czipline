@@ -31,3 +31,6 @@ class USEquityPricing(DataSet):
     amount = Column(float64_dtype)
     tmv = Column(float64_dtype)
     cmv = Column(float64_dtype)
+
+# 别名
+CNEquityPricing = USEquityPricing

@@ -46,14 +46,14 @@ Features
 .. code-block:: bash
 
     $ git clone https://github.com/liudengfeng/czipline.git
-    # 转移至项目安装目录
+    $ # 转移至项目安装目录
     # 安装辅助包
     $ pip install -r ./etc/requirements.txt
     $ pip install -r ./etc/requirements_add.txt
-    # 编译C扩展包
+    $ # 编译C扩展包
     $ python setup.py build_ext --inplace
     $ python setup.py install
-    # 如需开发安装
+    $ # 如需开发安装
     $ python setup.py develop
 
 

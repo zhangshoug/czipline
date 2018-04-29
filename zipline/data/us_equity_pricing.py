@@ -72,11 +72,10 @@ from zipline.utils.memoize import lazyval
 from zipline.utils.cli import maybe_show_progress
 from ._equities import _compute_row_slices, _read_bcolz_data
 from ._adjustments import load_adjustments_from_sqlite
-from .constants import ADJUST_FACTOR
+from .constants import ADJUST_FACTOR, OHLC
 
 logger = logbook.Logger('UsEquityPricing')
 
-OHLC = frozenset(['open', 'high', 'low', 'close'])
 US_EQUITY_PRICING_BCOLZ_COLUMNS = (
     'open', 'high', 'low', 'close', 'volume', 'day', 'id'
 )

@@ -9,9 +9,9 @@ import pandas as pd
 from logbook import Logger
 
 from . import core as bundles
-from ..constants import ADJUST_FACTOR, TEST_SYMBOLS
-from .sqldata import (fetch_single_equity, fetch_single_quity_adjustments,
-                      gen_asset_metadata, fetch_single_minutely_equity)
+from ..constants import ADJUST_FACTOR, TEST_SYMBOLS, OHLC
+from ..sqldata import (fetch_single_equity, fetch_single_quity_adjustments,
+                       gen_asset_metadata, fetch_single_minutely_equity)
 
 log = Logger('cnquandl')
 
@@ -46,6 +46,7 @@ def _update_splits(splits, asset_id, origin_data):
     df = pd.DataFrame({'ratio': 1 / (1 + origin_data.ratio),
                        'effective_date': pd.to_datetime(origin_data.listing_date),
                        'sid': asset_id})
+    # df['ratio'] = df.ratio.astype('float')
     splits.append(df)
 
 
@@ -59,6 +60,7 @@ def _update_dividends(dividends, asset_id, origin_data):
     origin_data['pay_date'] = pd.to_datetime(origin_data['pay_date'])
     origin_data['ex_date'] = origin_data['pay_date']
     origin_data['sid'] = asset_id
+    # origin_data['amount'] = origin_data.amount.astype('float')
     dividends.append(origin_data)
 
 
@@ -70,7 +72,7 @@ def gen_symbol_data(symbol_map,
     for _, symbol in symbol_map.iteritems():
         asset_id = _to_sid(symbol)
         if not is_minutely:
-            # 日线原始数据
+            # 日线原始数据，只需要OHLCV列
             raw_data = fetch_single_equity(
                 symbol,
                 start=sessions[0],
@@ -78,6 +80,8 @@ def gen_symbol_data(symbol_map,
             )
             # 不得包含涨跌幅列，含有正负号
             raw_data.drop('change_pct', axis=1, inplace=True)
+            # 百分比调整为小数
+            raw_data['turnover'] = raw_data.turnover / 100.
             # 调整数据精度
             raw_data = _adjusted_raw_data(raw_data)
             # 以日期、符号为索引

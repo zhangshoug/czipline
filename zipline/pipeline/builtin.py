@@ -319,7 +319,7 @@ class IsYZDT(CustomFilter):
 #==============================财务相关=============================#
 
 
-class TTMSales(CustomFactor):
+class TTMSale(CustomFactor):
     """
     最近一年营业总收入季度平均数
 
@@ -333,7 +333,7 @@ class TTMSales(CustomFactor):
     window_length = 260
 
     def _validate(self):
-        super(TTMSales, self)._validate()
+        super(TTMSale, self)._validate()
         if self.window_length < 260:
             raise ValueError('window_length值必须大于260,以确保获取一年的财务数据')
 
@@ -377,6 +377,32 @@ class TTMDividend(CustomFactor):
 
 #==============================估值相关=============================#
 # 参考网址：https://www.quantopian.com/help/fundamentals#valuation
+def enterprise_value():
+    """"""
+    return NotImplementedError()
+
+
+def market_cap():
+    """总市值"""
+    return USEquityPricing.tmv.latest
+
+
+def market_cap_2():
+    """流通市值"""
+    return USEquityPricing.cmv.latest
+
+
+def shares_outstanding():
+    """总股本"""
+    return USEquityPricing.tmv.latest / USEquityPricing.close.latest
+
+
+def shares_outstanding_2():
+    """流通股本"""
+    return USEquityPricing.cmv.latest / USEquityPricing.close.latest
+# 以下为估值相关比率
+
+
 def book_value_per_share():
     """普通股股东权益/稀释流通股"""
     # 股东权益 / 实收资本

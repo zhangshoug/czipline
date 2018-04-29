@@ -22,7 +22,7 @@ from zipline.data.us_equity_pricing import (
 )
 from zipline.lib.adjusted_array import AdjustedArray
 from zipline.utils.calendars import get_calendar
-
+from zipline.data.constants import EXTRA_COLUMNS
 from .base import PipelineLoader
 from .utils import shift_dates
 
@@ -84,7 +84,6 @@ class USEquityPricingLoader(PipelineLoader):
             dates,
             assets,
         )
-
         out = {}
         for c, c_raw, c_adjs in zip(columns, raw_arrays, adjustments):
             out[c] = AdjustedArray(
@@ -92,4 +91,5 @@ class USEquityPricingLoader(PipelineLoader):
                 c_adjs,
                 c.missing_value,
             )
+
         return out

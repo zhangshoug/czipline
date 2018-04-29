@@ -237,12 +237,14 @@ cpdef load_adjustments_from_sqlite(object adjustments_db,  # sqlite3.Connection
         price_adj = Float64Multiply(0, date_loc, asset_ix, asset_ix, ratio)
         for i, column in enumerate(columns):
             col_adjustments = results[i]
-            if column != 'volume':
+            #if column != 'volume':
+            if column in ('open','high','low','close'):
                 try:
                     col_adjustments[date_loc].append(price_adj)
                 except KeyError:
                     col_adjustments[date_loc] = [price_adj]
-            else:
+            #else:
+            elif column == 'volume':
                 volume_adj = Float64Multiply(
                     0, date_loc, asset_ix, asset_ix, 1.0 / ratio
                 )
@@ -265,7 +267,8 @@ cpdef load_adjustments_from_sqlite(object adjustments_db,  # sqlite3.Connection
         adj = Float64Multiply(0, date_loc, asset_ix, asset_ix, ratio)
         for i, column in enumerate(columns):
             col_adjustments = results[i]
-            if column != 'volume':
+            #if column != 'volume':
+            if column in ('open','high','low','close'):
                 try:
                     col_adjustments[date_loc].append(adj)
                 except KeyError:
@@ -285,7 +288,8 @@ cpdef load_adjustments_from_sqlite(object adjustments_db,  # sqlite3.Connection
         adj = Float64Multiply(0, date_loc, asset_ix, asset_ix, ratio)
         for i, column in enumerate(columns):
             col_adjustments = results[i]
-            if column != 'volume':
+            #if column != 'volume':
+            if column in ('open','high','low','close'):
                 try:
                     col_adjustments[date_loc].append(adj)
                 except KeyError:

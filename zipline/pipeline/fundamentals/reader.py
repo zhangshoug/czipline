@@ -29,15 +29,11 @@ def from_bcolz_data(table_name):
     """读取bcolz格式的数据，生成DataSet"""
     rootdir = bcolz_table_path(table_name)
     ctable = bcolz.ctable(rootdir=rootdir, mode='r')
+    # # 不需要先转换为DataFrame？
     df = ctable.todataframe()
-    # 如果使用下面注释的方法，会出现以下错误
-    # can't compare offset-naive and offset-aware datetimes
-    # raw_dshape = discover(ctable)
-    # df_dshape = _normalized_dshape(raw_dshape)
-    # expr = blaze.data(ctable, name=table_name, dshape=df_dshape)
     raw_dshape = discover(df)
     df_dshape = _normalized_dshape(raw_dshape)
-    expr = blaze.data(df, name=table_name, dshape=df_dshape)
+    expr = blaze.data(df, name=table_name, dshape=df_dshape)    
     return from_blaze(expr,
                       loader=global_loader,
                       no_deltas_rule='ignore',

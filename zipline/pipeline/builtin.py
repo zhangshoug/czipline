@@ -394,12 +394,12 @@ def market_cap_2():
 
 def shares_outstanding():
     """总股本"""
-    return USEquityPricing.tmv.latest / USEquityPricing.close.latest
+    return USEquityPricing.total_share.latest
 
 
 def shares_outstanding_2():
     """流通股本"""
-    return USEquityPricing.cmv.latest / USEquityPricing.close.latest
+    return USEquityPricing.circulating_share.latest
 # 以下为估值相关比率
 
 
@@ -418,11 +418,6 @@ def buy_back_yield():
     """The net repurchase of shares outstanding over the market capital of the company. 
     It is a measure of shareholder return."""
     return NotImplementedError()
-
-
-def market_cap():
-    """流通市值"""
-    return USEquityPricing.cmv.latest
 
 
 def trailing_dividend_yield():

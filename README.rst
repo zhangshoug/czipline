@@ -37,6 +37,16 @@ Features
   statsmodels, and sklearn to support development, analysis, and
   visualization of state-of-the-art trading systems.
 
+安装
+===
+
+使用``pip``安装
+--------------
+
+.. code-block:: bash
+
+    $ pip install git+https://github.com/liudengfeng/czipline#egg=zipline
+
 Installation
 ============
 

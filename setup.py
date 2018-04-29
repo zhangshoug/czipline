@@ -38,6 +38,7 @@ class LazyBuildExtCommandClass(dict):
     Lazy command class that defers operations requiring Cython and numpy until
     they've actually been downloaded and installed by setup_requires.
     """
+
     def __contains__(self, key):
         return (
             key == 'build_ext'
@@ -62,6 +63,7 @@ class LazyBuildExtCommandClass(dict):
             Custom build_ext command that lazily adds numpy's include_dir to
             extensions.
             """
+
             def build_extensions(self):
                 """
                 Lazily append numpy's include directory to Extension includes.
@@ -252,7 +254,7 @@ def extras_requires(conda_format=False):
         extra: read_requirements('etc/requirements_{0}.txt'.format(extra),
                                  strict_bounds=True,
                                  conda_format=conda_format)
-        for extra in ('dev', 'talib')
+        for extra in ('add', 'dev', 'talib')
     }
     extras['all'] = [req for reqs in extras.values() for req in reqs]
 
@@ -318,6 +320,7 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Operating System :: OS Independent',
         'Intended Audience :: Science/Research',
         'Topic :: Office/Business :: Financial',

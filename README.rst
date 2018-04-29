@@ -38,7 +38,7 @@ Features
   visualization of state-of-the-art trading systems.
 
 安装
-===
+====
 
 使用``pip``安装
 --------------

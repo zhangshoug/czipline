@@ -80,7 +80,8 @@ US_EQUITY_PRICING_BCOLZ_COLUMNS = (
     'open', 'high', 'low', 'close', 'volume', 'day', 'id'
 )
 # # 增加不参与调整的列
-EXTRA_COLUMNS = ('prev_close', 'turnover', 'amount', 'tmv', 'cmv')
+EXTRA_COLUMNS = ('prev_close', 'turnover', 'amount', 'tmv',
+                 'cmv', 'circulating_share', 'total_share')
 FULL_TABLE_COLUMNS = frozenset(US_EQUITY_PRICING_BCOLZ_COLUMNS + EXTRA_COLUMNS)
 SQLITE_ADJUSTMENT_COLUMN_DTYPES = {
     'effective_date': integer,
@@ -397,9 +398,9 @@ class BcolzDailyBarWriter(object):
         full_table = ctable(
             columns=[
                 columns[colname]
-                for colname in FULL_TABLE_COLUMNS # # 全部列
+                for colname in FULL_TABLE_COLUMNS  # 全部列
             ],
-            names=list(FULL_TABLE_COLUMNS), # # 列表类型
+            names=list(FULL_TABLE_COLUMNS),  # 列表类型
             rootdir=self._filename,
             mode='w',
         )
@@ -428,7 +429,8 @@ class BcolzDailyBarWriter(object):
                          'volume', *OHLC.union(EXTRA_COLUMNS))
         # processed = (raw_data[list(OHLC)] * 1000).astype('uint32')
         # # 列统一调整为uint32，输入时，已经调整，无需再对OHLC调整
-        processed = (raw_data[list(OHLC.union(EXTRA_COLUMNS).union(['volume']))]).astype('uint32')
+        processed = (
+            raw_data[list(OHLC.union(EXTRA_COLUMNS).union(['volume']))]).astype('uint32')
         dates = raw_data.index.values.astype('datetime64[s]')
         check_uint32_safe(dates.max().view(np.int64), 'day')
         processed['day'] = dates.astype('uint32')
@@ -507,6 +509,7 @@ class BcolzDailyBarReader(SessionBarReader):
     --------
     zipline.data.us_equity_pricing.BcolzDailyBarWriter
     """
+
     def __init__(self, table, read_all_threshold=3000):
         self._maybe_table_rootdir = table
         # Cache of fully read np.array for the carrays in the daily bar table.
@@ -514,7 +517,7 @@ class BcolzDailyBarReader(SessionBarReader):
         # Need to test keeping the entire array in memory for the course of a
         # process first.
         self._spot_cols = {}
-        self.PRICE_ADJUSTMENT_FACTOR = 1 # # 原始数据已经处理过，不必重复0.001
+        self.PRICE_ADJUSTMENT_FACTOR = 1  # 原始数据已经处理过，不必重复0.001
         self._read_all_threshold = read_all_threshold
 
     @lazyval

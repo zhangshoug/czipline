@@ -196,7 +196,7 @@ def fetch_single_equity(stock_code, start, end):
 
     注
     --
-    1. 除OHLCV外，还包括涨跌幅、成交额、换手率、流通市值、总市值列
+    1. 除OHLCV外，还包括涨跌幅、成交额、换手率、流通市值、总市值、流通股本、总股本
     2. 使用bcolz格式写入时，由于涨跌幅存在负数，必须剔除该列！！！
 
     Parameters
@@ -254,6 +254,8 @@ def fetch_single_equity(stock_code, start, end):
         df = pd.DataFrame.from_records(query.all())
         df.columns = DAILY_COLS
         df = _fill_zero(df)
+        df['circulating_share'] = df.cmv / df.close
+        df['total_share'] = df.tmv / df.close
         return df
 
 

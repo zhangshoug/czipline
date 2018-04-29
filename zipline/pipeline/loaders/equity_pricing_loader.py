@@ -22,7 +22,6 @@ from zipline.data.us_equity_pricing import (
 )
 from zipline.lib.adjusted_array import AdjustedArray
 from zipline.utils.calendars import get_calendar
-from zipline.data.constants import EXTRA_COLUMNS
 from .base import PipelineLoader
 from .utils import shift_dates
 

@@ -31,6 +31,8 @@ class USEquityPricing(DataSet):
     amount = Column(float64_dtype)
     tmv = Column(float64_dtype)
     cmv = Column(float64_dtype)
-
+    circulating_share = Column(float64_dtype) # # 流通股本
+    total_share = Column(float64_dtype)       # # 总股本
+    
 # 别名
 CNEquityPricing = USEquityPricing

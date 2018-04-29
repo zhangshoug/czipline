@@ -16,6 +16,8 @@ ADJUST_FACTOR = {'turnover': 1000000,     # 换手率为百分比34.78 代表 34
                  'low': 1000,           
                  'close': 1000,  
                  'prev_close': 1000,
+                 'circulating_share' : 0.0001,
+                 'total_share' : 0.0001,
                  'amount': 0.0001,
                  'volume': 0.0001,      # 指数数据须缩小，否则会溢出
                  'cmv': 0.0001,

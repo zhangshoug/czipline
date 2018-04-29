@@ -40,61 +40,22 @@ Features
 安装
 ====
 
-使用``pip``安装
---------------
+本地安装
+--------
 
 .. code-block:: bash
 
-    $ pip install git+https://github.com/liudengfeng/czipline#egg=zipline
+    $ git clone https://github.com/liudengfeng/czipline.git
+    # 转移至项目安装目录
+    # 安装辅助包
+    $ pip install -r ./etc/requirements.txt
+    $ pip install -r ./etc/requirements_add.txt
+    # 编译C扩展包
+    $ python setup.py build_ext --inplace
+    $ python setup.py install
+    # 如需开发安装
+    $ python setup.py develop
 
-Installation
-============
-
-Installing With ``pip``
------------------------
-
-Assuming you have all required (see note below) non-Python dependencies, you
-can install Zipline with ``pip`` via:
-
-.. code-block:: bash
-
-    $ pip install zipline
-
-**Note:** Installing Zipline via ``pip`` is slightly more involved than the
-average Python package.  Simply running ``pip install zipline`` will likely
-fail if you've never installed any scientific Python packages before.
-
-There are two reasons for the additional complexity:
-
-1. Zipline ships several C extensions that require access to the CPython C API.
-   In order to build the C extensions, ``pip`` needs access to the CPython
-   header files for your Python installation.
-
-2. Zipline depends on `numpy <http://www.numpy.org/>`_, the core library for
-   numerical array computing in Python.  Numpy depends on having the `LAPACK
-   <http://www.netlib.org/lapack>`_ linear algebra routines available.
-
-Because LAPACK and the CPython headers are binary dependencies, the correct way
-to install them varies from platform to platform.  On Linux, users generally
-acquire these dependencies via a package manager like ``apt``, ``yum``, or
-``pacman``.  On OSX, `Homebrew <http://www.brew.sh>`_ is a popular choice
-providing similar functionality.
-
-See the full `Zipline Install Documentation`_ for more information on acquiring
-binary dependencies for your specific platform.
-
-conda
------
-
-Another way to install Zipline is via the ``conda`` package manager, which
-comes as part of `Anaconda <http://continuum.io/downloads>`_ or can be
-installed via ``pip install conda``.
-
-Once set up, you can install Zipline from our ``Quantopian`` channel:
-
-.. code-block:: bash
-
-    $ conda install -c Quantopian zipline
 
 Currently supported platforms include:
 

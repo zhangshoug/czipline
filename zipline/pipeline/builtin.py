@@ -335,7 +335,7 @@ class TTMSale(CustomFactor):
     def _validate(self):
         super(TTMSale, self)._validate()
         if self.window_length < 260:
-            raise ValueError('window_length值必须大于260,以确保获取一年的财务数据')
+            raise ValueError('window_length值必须或等于260,以确保获取一年的财务数据')
 
     def compute(self, today, assets, out, sales, asof_date):
         # 计算期间季度数发生变化的位置，简化计算量
@@ -364,7 +364,7 @@ class TTMDividend(CustomFactor):
     def _validate(self):
         super(TTMDividend, self)._validate()
         if self.window_length < 260:
-            raise ValueError('window_length值必须大于260,以确保获取一年的财务数据')
+            raise ValueError('window_length值必须大于或等于260,以确保获取一年的财务数据')
 
     def compute(self, today, assets, out, ds, asof_date):
         def func(x): return x.month

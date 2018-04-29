@@ -138,8 +138,8 @@ from zipline.sources.requests_csv import PandasRequestsCSV
 from zipline.gens.sim_engine import MinuteSimulationClock
 from zipline.sources.benchmark_source import BenchmarkSource
 from zipline.zipline_warnings import ZiplineDeprecationWarning
-
-
+# # 设置logbook显示本地时间，逻辑应该不对，不需要？
+logbook.set_datetime_format('local')
 log = logbook.Logger("ZiplineLog")
 
 

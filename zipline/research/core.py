@@ -16,7 +16,7 @@ from zipline.data.bundles.core import load
 
 from zipline.pipeline.loaders.blaze import global_loader
 
-bundle = 'cntdaily' # 使用测试集时，更改为cntdaily。加快运行速度
+bundle = 'cndaily' # 使用测试集时，更改为cntdaily。加快运行速度
 
 bundle_data = load(bundle)
 

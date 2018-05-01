@@ -31,11 +31,11 @@ Zipline目前有一个免费的[回测平台](https://www.quantopian.com)，可�
 ### 克隆
 $ git clone https://github.com/liudengfeng/czipline.git
 ### 安装包
-# 转移至项目安装文件所在目录
+$ # 转移至项目安装文件所在目录
 $ pip install -r ./etc/requirements.txt
 $ pip install -r ./etc/requirements_add.txt
 
-# 下载并安装ta-lib包
+$ # 下载并安装ta-lib包
 ### 编译`C`扩展库
 $ python setup.py build_ext --inplace
 ### 安装`zipline`
@@ -215,7 +215,7 @@ def myfunc(context, data):
     2017-10-31 15:00:00+08:00 -1.6233534895267374 -0.795885505339075
     2017-11-30 15:00:00+08:00 -2.965097825507776 4.4434701009908615
     2017-12-29 15:00:00+08:00 -1.1942883365086068 -0.38062423581176485
-    [2018-05-02 00:30:20.701634] INFO: zipline.finance.metrics.tracker: Simulated 244 trading days
+    [2018-05-02 01:18:08.480729] INFO: zipline.finance.metrics.tracker: Simulated 244 trading days
     first open: 2017-01-03 01:31:00+00:00
     last close: 2017-12-29 07:00:00+00:00
 
@@ -238,8 +238,9 @@ def myfunc(context, data):
 
 ## 交流
 
-该项目纯属个人爱好，水平有限，欢迎加入来一起完善(微信号ldf10728268)。
+该项目纯属个人爱好，水平有限，欢迎加入来一起完善。
 
-**添加个人微信，请务必备注`zipline`**
-
-![联系方式](./images/ldf.png)
+**添加个人微信(ldf10728268)，请务必备注`zipline`**
+<div>
+<img src="/images/ldf.png" width="30%" height="30%" />
+</div>

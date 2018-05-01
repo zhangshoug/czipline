@@ -78,8 +78,8 @@ $ python setup.py develop
 ----
 
 计算\ ``Fama-French``\ 三因子案例涉及到： 1.
-如何在\ ``Notebook``\ 运行回测 2. 计划函数用法 3.
-``Fundamentals``\ 及财务数据 4. ``pipeline``\ 及自定义因子用法 5.
+如何在\ ``Notebook``\ 运行回测 2. 选择基准收益率指数代码 3. 计划函数用法
+4. ``Fundamentals``\ 及财务数据 5. ``pipeline``\ 及自定义因子用法 6.
 回测速度
 
 比较适合作为演示材料
@@ -90,7 +90,7 @@ $ python setup.py develop
 
 .. code:: ipython3
 
-    %%zipline --start 2017-1-1 --end 2018-1-1
+    %%zipline --start 2017-1-1 --end 2018-1-1 --bm-symbol 399001
     from zipline.api import symbol, sid, get_datetime
     
     import pandas as pd
@@ -236,7 +236,7 @@ $ python setup.py develop
     2017-10-31 15:00:00+08:00 -1.6233534895267374 -0.795885505339075
     2017-11-30 15:00:00+08:00 -2.965097825507776 4.4434701009908615
     2017-12-29 15:00:00+08:00 -1.1942883365086068 -0.38062423581176485
-    [2018-05-02 00:17:39.152655] INFO: zipline.finance.metrics.tracker: Simulated 244 trading days
+    [2018-05-02 00:30:20.701634] INFO: zipline.finance.metrics.tracker: Simulated 244 trading days
     first open: 2017-01-03 01:31:00+00:00
     last close: 2017-12-29 07:00:00+00:00
 
@@ -292,7 +292,7 @@ $ python setup.py develop
           <td>NaN</td>
           <td>0.0</td>
           <td>NaN</td>
-          <td>0.009712</td>
+          <td>0.008422</td>
           <td>NaN</td>
           <td>NaN</td>
           <td>0.0</td>
@@ -316,8 +316,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.017593</td>
-          <td>0.021406</td>
+          <td>0.020412</td>
+          <td>0.038928</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -340,8 +340,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.017435</td>
-          <td>0.083084</td>
+          <td>0.019096</td>
+          <td>0.108456</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -364,8 +364,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.011356</td>
-          <td>0.115404</td>
+          <td>0.011028</td>
+          <td>0.143696</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -388,8 +388,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.016261</td>
-          <td>0.100950</td>
+          <td>0.015197</td>
+          <td>0.124811</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -412,8 +412,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.014560</td>
-          <td>0.095760</td>
+          <td>0.012696</td>
+          <td>0.117206</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -436,8 +436,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.007377</td>
-          <td>0.104382</td>
+          <td>0.003768</td>
+          <td>0.125535</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -460,8 +460,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.002279</td>
-          <td>0.102578</td>
+          <td>-0.004510</td>
+          <td>0.126307</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -484,8 +484,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.002971</td>
-          <td>0.095975</td>
+          <td>-0.016590</td>
+          <td>0.133134</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -508,8 +508,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.002830</td>
-          <td>0.090519</td>
+          <td>-0.045626</td>
+          <td>0.187327</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -532,8 +532,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.004917</td>
-          <td>0.086298</td>
+          <td>-0.034425</td>
+          <td>0.194146</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -556,8 +556,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.008848</td>
-          <td>0.083788</td>
+          <td>-0.036590</td>
+          <td>0.185154</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -580,8 +580,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.005804</td>
-          <td>0.081915</td>
+          <td>-0.040145</td>
+          <td>0.177295</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -604,8 +604,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.013538</td>
-          <td>0.084470</td>
+          <td>-0.026628</td>
+          <td>0.185263</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -628,8 +628,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.016315</td>
-          <td>0.081719</td>
+          <td>-0.019745</td>
+          <td>0.182241</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -652,8 +652,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.016426</td>
-          <td>0.079044</td>
+          <td>-0.023149</td>
+          <td>0.176279</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -676,8 +676,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.019886</td>
-          <td>0.077078</td>
+          <td>-0.019571</td>
+          <td>0.171793</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -700,8 +700,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.023528</td>
-          <td>0.075314</td>
+          <td>-0.012291</td>
+          <td>0.169693</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -724,8 +724,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.016438</td>
-          <td>0.079092</td>
+          <td>-0.016930</td>
+          <td>0.165575</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -748,8 +748,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.019071</td>
-          <td>0.077224</td>
+          <td>-0.009670</td>
+          <td>0.163786</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -772,8 +772,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.016799</td>
-          <td>0.076073</td>
+          <td>-0.011946</td>
+          <td>0.159770</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -796,8 +796,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.022117</td>
-          <td>0.075736</td>
+          <td>-0.004621</td>
+          <td>0.158217</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -820,8 +820,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.026046</td>
-          <td>0.074588</td>
+          <td>0.000548</td>
+          <td>0.155592</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -844,8 +844,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.031241</td>
-          <td>0.074054</td>
+          <td>0.000906</td>
+          <td>0.152175</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -868,8 +868,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.038126</td>
-          <td>0.074482</td>
+          <td>0.009204</td>
+          <td>0.151233</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -892,8 +892,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.037984</td>
-          <td>0.073157</td>
+          <td>0.008624</td>
+          <td>0.148209</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -916,8 +916,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.033727</td>
-          <td>0.073710</td>
+          <td>0.000010</td>
+          <td>0.147860</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -940,8 +940,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.039533</td>
-          <td>0.073515</td>
+          <td>0.007547</td>
+          <td>0.146827</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -964,8 +964,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.033644</td>
-          <td>0.075131</td>
+          <td>0.002041</td>
+          <td>0.145183</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -988,8 +988,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.048734</td>
-          <td>0.083479</td>
+          <td>0.014921</td>
+          <td>0.147361</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1036,8 +1036,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.251884</td>
-          <td>0.089501</td>
+          <td>0.123849</td>
+          <td>0.132024</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1060,8 +1060,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.274200</td>
-          <td>0.091110</td>
+          <td>0.140018</td>
+          <td>0.132558</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1084,8 +1084,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.277181</td>
-          <td>0.090908</td>
+          <td>0.135959</td>
+          <td>0.132329</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1108,8 +1108,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.239366</td>
-          <td>0.096537</td>
+          <td>0.098098</td>
+          <td>0.136977</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1132,8 +1132,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.239911</td>
-          <td>0.096317</td>
+          <td>0.097403</td>
+          <td>0.136668</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1156,8 +1156,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.223520</td>
-          <td>0.097295</td>
+          <td>0.076355</td>
+          <td>0.137966</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1180,8 +1180,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.225295</td>
-          <td>0.097075</td>
+          <td>0.089812</td>
+          <td>0.138260</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1204,8 +1204,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.224669</td>
-          <td>0.096867</td>
+          <td>0.088927</td>
+          <td>0.137953</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1228,8 +1228,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.210273</td>
-          <td>0.097585</td>
+          <td>0.075365</td>
+          <td>0.138321</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1252,8 +1252,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.207867</td>
-          <td>0.097414</td>
+          <td>0.082150</td>
+          <td>0.138155</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1276,8 +1276,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.214127</td>
-          <td>0.097303</td>
+          <td>0.082288</td>
+          <td>0.137846</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1300,8 +1300,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.220566</td>
-          <td>0.097199</td>
+          <td>0.066587</td>
+          <td>0.138436</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1324,8 +1324,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.213209</td>
-          <td>0.097258</td>
+          <td>0.072146</td>
+          <td>0.138226</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1348,8 +1348,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.199686</td>
-          <td>0.097863</td>
+          <td>0.061330</td>
+          <td>0.138356</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1372,8 +1372,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.209450</td>
-          <td>0.097949</td>
+          <td>0.074478</td>
+          <td>0.138634</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1396,8 +1396,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.229425</td>
-          <td>0.099101</td>
+          <td>0.094936</td>
+          <td>0.139707</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1420,8 +1420,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.213267</td>
-          <td>0.099970</td>
+          <td>0.085106</td>
+          <td>0.139749</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1444,8 +1444,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.223562</td>
-          <td>0.100070</td>
+          <td>0.094999</td>
+          <td>0.139743</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1468,8 +1468,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.216329</td>
-          <td>0.100104</td>
+          <td>0.091686</td>
+          <td>0.139487</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1492,8 +1492,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.202645</td>
-          <td>0.100677</td>
+          <td>0.080676</td>
+          <td>0.139614</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1516,8 +1516,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.203985</td>
-          <td>0.100462</td>
+          <td>0.076942</td>
+          <td>0.139371</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1540,8 +1540,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.219102</td>
-          <td>0.100980</td>
+          <td>0.088230</td>
+          <td>0.139468</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1564,8 +1564,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.217641</td>
-          <td>0.100788</td>
+          <td>0.081188</td>
+          <td>0.139352</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1588,8 +1588,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.228927</td>
-          <td>0.100948</td>
+          <td>0.092479</td>
+          <td>0.139444</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1612,8 +1612,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.224924</td>
-          <td>0.100825</td>
+          <td>0.090112</td>
+          <td>0.139175</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1636,8 +1636,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.220979</td>
-          <td>0.100701</td>
+          <td>0.081401</td>
+          <td>0.139150</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1660,8 +1660,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.224630</td>
-          <td>0.100515</td>
+          <td>0.083006</td>
+          <td>0.138864</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1684,8 +1684,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.205774</td>
-          <td>0.101669</td>
+          <td>0.072136</td>
+          <td>0.138982</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1708,8 +1708,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.214140</td>
-          <td>0.101652</td>
+          <td>0.078307</td>
+          <td>0.138805</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1732,8 +1732,8 @@ $ python setup.py develop
           <td>0.0</td>
           <td>0.0</td>
           <td>0.0</td>
-          <td>0.217752</td>
-          <td>0.101466</td>
+          <td>0.084836</td>
+          <td>0.138640</td>
           <td>0.0</td>
           <td>0.0</td>
           <td>10000000.0</td>
@@ -1758,7 +1758,7 @@ $ python setup.py develop
 
 
 
-**运行时长8秒**
+**运行时长10-12秒**
 
 -  有关如何使用，请参考\ `quantopian使用手册 <https://www.quantopian.com/help>`__\ 。
 -  有关本项目的说明，请参阅\ `介绍材料 <https://github.com/liudengfeng/czipline/tree/master/docs/%E4%BB%8B%E7%BB%8D%E6%9D%90%E6%96%99>`__
@@ -1781,7 +1781,8 @@ $ python setup.py develop
 交流
 ----
 
-该项目纯属个人爱好，水平有限。欢迎加入来一起完善。
+该项目纯属个人爱好，水平有限，欢迎加入来一起完善。
+
 **添加个人微信，请务必备注\ ``zipline``**
 
 .. figure:: https://github.com/liudengfeng/czipline/blob/master/docs/%E4%BB%8B%E7%BB%8D%E6%9D%90%E6%96%99/ldf.png

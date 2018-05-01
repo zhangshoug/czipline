@@ -269,7 +269,7 @@ $ python setup.py develop
 
 **添加个人微信，请务必备注\ ``zipline``**
 
-.. figure:: https://github.com/liudengfeng/czipline/blob/master/docs/%E4%BB%8B%E7%BB%8D%E6%9D%90%E6%96%99/ldf.png
+.. image:: https://github.com/liudengfeng/czipline/blob/master/docs/%E4%BB%8B%E7%BB%8D%E6%9D%90%E6%96%99/ldf.png
    :alt: 联系方式
    :align: center
    :width: 40px

@@ -78,8 +78,9 @@ $ python setup.py develop
 ----
 
 计算\ ``Fama-French``\ 三因子案例涉及到： 1.
-如何在\ ``Notebook``\ 运行回测 2. ``Fundamentals``\ 及财务数据 3.
-``pipeline``\ 及自定义因子用法 4. 回测速度
+如何在\ ``Notebook``\ 运行回测 2. 计划函数用法 3.
+``Fundamentals``\ 及财务数据 4. ``pipeline``\ 及自定义因子用法 5.
+回测速度
 
 比较适合作为演示材料
 

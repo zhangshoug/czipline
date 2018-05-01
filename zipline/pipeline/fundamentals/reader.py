@@ -115,6 +115,8 @@ class Fundamentals(object):
         verify_code(code)
         return YYNL_ITEM_MAPS[code]
 
+    concept_maps = query_maps('infoes', 'concept')
+
     @staticmethod
     def concept_col_name(code):
         """股票概念中文名称（输入编码）"""
@@ -174,7 +176,7 @@ class Fundamentals(object):
         """根据名称关键词模糊查询营运能力指标项目编码"""
         out = {k: v for k, v in YYNL_ITEM_MAPS.items() if key in v}
         return out
-    
+
     concept_maps = query_maps('infoes', 'concept')
 
     @staticmethod
@@ -190,6 +192,9 @@ class Fundamentals(object):
     # 为提高读写速度，文本及类别更改为整数编码，查找整数所代表的含义，使用
     # 下列方法。数字自0开始，长度为len(类别)
     # 输入数字（如触发Keyerror，请减少数值再次尝试
+
+    supper_sector_maps = query_maps('infoes', 'super_sector_code')
+
     @staticmethod
     def supper_sector_cname(code):
         """超级部门编码含义"""
@@ -197,10 +202,10 @@ class Fundamentals(object):
         table_name = 'infoes'
         attr_name = 'super_sector_code'
         maps = query_maps(table_name, attr_name)
-        return maps  # [code]
+        return maps[code]
 
     sector_maps = query_maps('infoes', 'sector_code')
-    
+
     @staticmethod
     def sector_cname(code):
         """部门编码含义"""
@@ -209,6 +214,15 @@ class Fundamentals(object):
         attr_name = 'sector_code'
         maps = query_maps(table_name, attr_name)
         return maps[code]
+
+    @staticmethod
+    def sector_code(key):
+        """关键词查询地域编码"""
+        table_name = 'infoes'
+        attr_name = 'sector_code'
+        maps = query_maps(table_name, attr_name)
+        out = {k: v for k, v in maps.items() if key in v}
+        return out
 
     @staticmethod
     def market_cname(code):
@@ -276,7 +290,7 @@ class Fundamentals(object):
         table_name = 'infoes'
         attr_name = 'ths_industry'
         maps = query_maps(table_name, attr_name)
-        out = {k: v for k, v in maps.items() if key in v}        
+        out = {k: v for k, v in maps.items() if key in v}
         return out
 
     cn_industry_maps = query_maps('infoes', 'cn_industry')
@@ -296,7 +310,7 @@ class Fundamentals(object):
         table_name = 'infoes'
         attr_name = 'cn_industry'
         maps = query_maps(table_name, attr_name)
-        out = {k: v for k, v in maps.items() if key in v}   
+        out = {k: v for k, v in maps.items() if key in v}
         return out
 
     #========================数据集========================#

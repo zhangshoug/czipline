@@ -29,28 +29,50 @@ Zipline目前有一个免费的[回测平台](https://www.quantopian.com)，可�
 #### 安装
 
 ##### 克隆
-$ git clone https://github.com/liudengfeng/czipline.git
+
+
+```python
+# $ git clone https://github.com/liudengfeng/czipline.git
+```
+
 ##### 安装包
-$ # 转移至项目安装文件所在目录
-$ pip install -r ./etc/requirements.txt
-$ pip install -r ./etc/requirements_add.txt
 
-$ # 下载并安装ta-lib包
+
+```python
+# $ # 转移至项目安装文件所在目录
+# $ pip install -r ./etc/requirements.txt
+# $ pip install -r ./etc/requirements_add.txt
+
+# $ # 下载并安装ta-lib包
+```
+
 ##### 编译`C`扩展库
-$ python setup.py build_ext --inplace
-##### 安装`zipline`
-$ python setup.py install
-$ # 如需开发安装
-$ python setup.py develop
-#### 准备数据
 
+
+```python
+# $ python setup.py build_ext --inplace
+```
+
+##### 安装`zipline`
+
+
+```python
+# $ python setup.py install
+# $ # 如需开发安装
+# $ python setup.py develop
+```
+
+#### 准备数据
 成功安装`zipline`后，`cswd`包也已经成功安装。在相应环境下，执行以下命令：
 
->$ init-stock-data # 初始化基础数据。首次耗时大约4小时，以后每日后台自动刷新约半小时
 
->$ zipline ingest -b cndaily # 转换日线数据，耗时约10分钟
+```python
+# $ init-stock-data # 初始化基础数据。首次耗时大约4小时，以后每日后台自动刷新约半小时
 
->$ sql-to-bcolz # `Fundamentals`数据，耗时约1.5分钟
+# $ zipline ingest -b cndaily # 转换日线数据，耗时约10分钟
+
+# $ sql-to-bcolz # `Fundamentals`数据，耗时约1.5分钟
+```
 
 #### 使用
 
@@ -215,7 +237,7 @@ def myfunc(context, data):
     2017-10-31 15:00:00+08:00 -1.6233534895267374 -0.795885505339075
     2017-11-30 15:00:00+08:00 -2.965097825507776 4.4434701009908615
     2017-12-29 15:00:00+08:00 -1.1942883365086068 -0.38062423581176485
-    [2018-05-02 01:31:47.504203] INFO: zipline.finance.metrics.tracker: Simulated 244 trading days
+    [2018-05-02 02:07:02.681398] INFO: zipline.finance.metrics.tracker: Simulated 244 trading days
     first open: 2017-01-03 01:31:00+00:00
     last close: 2017-12-29 07:00:00+00:00
 

@@ -81,5 +81,4 @@ TAGS
 .cache
 .pytest_cache
 
-README.ipynp
-x.csv
+README.ipynb

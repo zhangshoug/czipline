@@ -8,8 +8,6 @@ timestamp = 公告日期 如果公告日期存在
 timestamp = 报告截止日期 + 45天 如果不存在公告日期
 
 asof_date = timestamp - 1天
-
-不再使用utils._normalize_ad_ts_sid, 改在本地完成
 """
 import os
 from functools import partial
@@ -19,7 +17,7 @@ import numpy as np
 import pandas as pd
 from logbook import Logger
 from odo import odo
-from cswd.tasks.report_dates import BookReportDate
+
 from cswd.common.utils import data_root, ensure_list
 from cswd.sql.constants import (BALANCESHEET_ITEM_MAPS,
                                 CASHFLOWSTATEMENT_ITEM_MAPS, CHNL_ITEM_MAPS,
@@ -27,7 +25,7 @@ from cswd.sql.constants import (BALANCESHEET_ITEM_MAPS,
                                 YLNL_ITEM_MAPS, YYNL_ITEM_MAPS, ZYZB_ITEM_MAPS)
 
 from .base import STOCK_DB, bcolz_table_path
-
+from .utils import _normalize_ad_ts_sid
 
 QUARTERLY_TABLES = ['balance_sheets', 'profit_statements', 'cashflow_statements',
                     'chnls', 'cznls', 'ylnls', 'yynls', 'zyzbs']
@@ -35,46 +33,12 @@ QUARTERLY_TABLES = ['balance_sheets', 'profit_statements', 'cashflow_statements'
 logger = Logger('财务报告')
 
 
-def get_preprocessed_dates():
-    """预处理实际披露时间表"""
-    col_names = ['report_end_date', 'timestamp', 'code']
-    brd = BookReportDate()
-    dates = brd.data
-    # 不需要预约及变更日期，加快写入及读取速度
-    dates = dates[['报告期', '实际披露', '股票代码']]
-    dates.columns = col_names
-    for col in col_names:
-        if col != 'code':
-            dates[col] = dates[col].map(lambda x: pd.Timestamp(x).date())
-    return dates
-
-
-def normalize_ad_ts_sid(df, preprocessed_dates):
-    """完成对实际公告日期的修正，转换股票代码为sid"""
-    out = df.merge(preprocessed_dates, how='left',
-                   on=['code', 'report_end_date'])
-    has_adate = ~out['timestamp'].isna()
-    # 先赋值为报告截止日期后45天
-    out['asof_date'] = out['report_end_date'] + pd.Timedelta(days=45)
-    # 修正截止日期
-    out.loc[has_adate,
-            'asof_date'] = out.loc[has_adate, 'timestamp'] - pd.Timedelta(days=1)
-    # 改变类型
-    out['sid'] = out['code'].map(lambda x: int(x))
-    out['asof_date'] = pd.to_datetime(out['asof_date'])
-    out['timestamp'] = pd.to_datetime(out['timestamp'])
-    # 丢弃不再需要的列
-    out.drop(['code', 'report_end_date'], axis=1, inplace=True)
-    return out
-
-
-def normalized_financial_data(df, preprocessed_dates, maps):
+def normalized_financial_data(df, maps):
     """财务报告数据"""
     df.drop(['更新时间', '序号', '公告日期'], axis=1, inplace=True)
-    df.rename(columns={'股票代码': 'code',
-                       '报告日期': 'report_end_date'}, inplace=True)
+    df.rename(columns={'股票代码': 'code', '报告日期': 'date'}, inplace=True)
     df.rename(columns={v: k for k, v in maps.items()}, inplace=True)
-    return normalize_ad_ts_sid(df, preprocessed_dates)
+    return df.fillna(value=0.0)
 
 
 def _factory(table_name):
@@ -105,7 +69,7 @@ def _factory(table_name):
     raise NotImplementedError(table_name)
 
 
-def _write_by_expr(expr):
+def _write_by_expr(expr, ndays=45):
     """
     以bcolz格式写入表达式数据
 
@@ -120,17 +84,17 @@ def _write_by_expr(expr):
     # 1. 读取表
     df = odo(expr, pd.DataFrame)
 
-    # 2. 获取预先处理的上市公司公告日期表
-    preprocessed_dates = get_preprocessed_dates()
+    # 2. 调整转换数据
+    processed = _factory(table_name)(df)
 
-    # 3. 调整转换数据
-    processed = _factory(table_name)(df, preprocessed_dates)
+    # 3. 列名称及类型标准化
+    out = _normalize_ad_ts_sid(processed, ndays)
 
-    # 4. 转换为bcolz格式并存储
+    # 转换为bcolz格式并存储
     rootdir = bcolz_table_path(table_name)
     if os.path.exists(rootdir):
         rmtree(rootdir)
-    odo(processed, rootdir)
+    odo(out, rootdir)
     logger.info('表:{}，数据存储路径：{}'.format(table_name, rootdir))
 
 
@@ -148,9 +112,10 @@ def write_financal_data_to_bcolz(tables=None):
         to_does = ensure_list(to_does)
     for table in to_does:
         if table in QUARTERLY_TABLES:
+            ndays = 45
             logger.info('预处理表：{}'.format(table))
             expr = STOCK_DB[table]
-            _write_by_expr(expr)
+            _write_by_expr(expr, ndays)
         else:
             raise ValueError('要写入的数据表{}不在"{}"范围'.format(
                 table, QUARTERLY_TABLES))

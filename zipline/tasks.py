@@ -9,9 +9,9 @@ from zipline.pipeline.fundamentals.financal import write_financal_data_to_bcolz
 from zipline.pipeline.fundamentals.dynamic import write_dynamic_data_to_bcolz
 
 def main():
-    write_static_info_to_bcolz()
+    # write_static_info_to_bcolz()
     write_financal_data_to_bcolz()
-    write_dynamic_data_to_bcolz()
+    # write_dynamic_data_to_bcolz()
 
 if __name__ == '__main__':
     main()

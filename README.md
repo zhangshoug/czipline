@@ -1981,4 +1981,4 @@ def handle_data(context, data):
 该项目纯属个人爱好，水平有限。欢迎加入来一起完善。
 **添加个人微信，请务必备注`zipline`**
 
-![联系方式](./ldf.png)
+![联系方式](https://github.com/liudengfeng/czipline/blob/master/docs/%E4%BB%8B%E7%BB%8D%E6%9D%90%E6%96%99/ldf.png)

@@ -33,7 +33,7 @@ def from_bcolz_data(table_name):
     df = ctable.todataframe()
     raw_dshape = discover(df)
     df_dshape = _normalized_dshape(raw_dshape)
-    expr = blaze.data(df, name=table_name, dshape=df_dshape)    
+    expr = blaze.data(df, name=table_name, dshape=df_dshape)
     return from_blaze(expr,
                       loader=global_loader,
                       no_deltas_rule='ignore',
@@ -127,56 +127,58 @@ class Fundamentals(object):
     # 有时需要根据列关键字查找列编码，使用下面方法
     # 输入关键字查询列编码
     @staticmethod
-    def query_balancesheet_code(key):
+    def balancesheet_col_code(key):
         """根据名称关键词模糊查询资产负债表项目编码"""
         out = {k: v for k, v in BALANCESHEET_ITEM_MAPS.items() if key in v}
         return out
 
     @staticmethod
-    def query_profit_code(key):
+    def profit_col_code(key):
         """根据名称关键词模糊查询利润表项目编码"""
         out = {k: v for k, v in PROFITSTATEMENT_ITEM_MAPS.items() if key in v}
         return out
 
     @staticmethod
-    def query_cashflow_code(key):
+    def cashflow_col_code(key):
         """根据名称关键词模糊查询现金流量表项目编码"""
         out = {k: v for k, v in CASHFLOWSTATEMENT_ITEM_MAPS.items()
                if key in v}
         return out
 
     @staticmethod
-    def query_key_financial_indicator_code(key):
+    def key_financial_indicator_col_code(key):
         """根据名称关键词模糊查询主要财务指标表项目编码"""
         out = {k: v for k, v in ZYZB_ITEM_MAPS.items() if key in v}
         return out
 
     @staticmethod
-    def query_earnings_ratio_code(key):
+    def earnings_ratio_col_code(key):
         """根据名称关键词模糊查询盈利能力指标项目编码"""
         out = {k: v for k, v in YLNL_ITEM_MAPS.items() if key in v}
         return out
 
     @staticmethod
-    def query_solvency_ratio_code(key):
+    def solvency_ratio_col_code(key):
         """根据名称关键词模糊查询偿还能力指标项目编码"""
         out = {k: v for k, v in CHNL_ITEM_MAPS.items() if key in v}
         return out
 
     @staticmethod
-    def query_growth_ratio_code(key):
+    def growth_ratio_col_code(key):
         """根据名称关键词模糊查询成长能力指标项目编码"""
         out = {k: v for k, v in CZNL_ITEM_MAPS.items() if key in v}
         return out
 
     @staticmethod
-    def query_operation_ratio_code(key):
+    def operation_ratio_col_code(key):
         """根据名称关键词模糊查询营运能力指标项目编码"""
         out = {k: v for k, v in YYNL_ITEM_MAPS.items() if key in v}
         return out
+    
+    concept_maps = query_maps('infoes', 'concept')
 
     @staticmethod
-    def query_concept_code(key):
+    def concept_col_code(key):
         """模糊查询概念编码（输入概念关键词）"""
         table_name = 'infoes'
         attr_name = 'concept'
@@ -197,6 +199,8 @@ class Fundamentals(object):
         maps = query_maps(table_name, attr_name)
         return maps  # [code]
 
+    sector_maps = query_maps('infoes', 'sector_code')
+    
     @staticmethod
     def sector_cname(code):
         """部门编码含义"""
@@ -215,6 +219,8 @@ class Fundamentals(object):
         maps = query_maps(table_name, attr_name)
         return maps[code]
 
+    region_maps = query_maps('infoes', 'region')
+
     @staticmethod
     def region_cname(code):
         """地域版块编码含义"""
@@ -223,6 +229,17 @@ class Fundamentals(object):
         attr_name = 'region'
         maps = query_maps(table_name, attr_name)
         return maps[code]
+
+    @staticmethod
+    def region_code(key):
+        """关键词查询地域编码"""
+        table_name = 'infoes'
+        attr_name = 'region'
+        maps = query_maps(table_name, attr_name)
+        out = {k: v for k, v in maps.items() if key in v}
+        return out
+
+    csrc_industry_maps = query_maps('infoes', 'csrc_industry')
 
     @staticmethod
     def csrc_industry_cname(code):
@@ -234,6 +251,17 @@ class Fundamentals(object):
         return maps[code]
 
     @staticmethod
+    def csrc_industry_code(key):
+        """关键词模糊查询证监会行业编码"""
+        table_name = 'infoes'
+        attr_name = 'csrc_industry'
+        maps = query_maps(table_name, attr_name)
+        out = {k: v for k, v in maps.items() if key in v}
+        return out
+
+    ths_industry_maps = query_maps('infoes', 'ths_industry')
+
+    @staticmethod
     def ths_industry_cname(code):
         """同花顺行业编码含义"""
         code = str(code)
@@ -243,6 +271,17 @@ class Fundamentals(object):
         return maps[code]
 
     @staticmethod
+    def ths_industry_code(key):
+        """关键词模糊查询同花顺行业编码"""
+        table_name = 'infoes'
+        attr_name = 'ths_industry'
+        maps = query_maps(table_name, attr_name)
+        out = {k: v for k, v in maps.items() if key in v}        
+        return out
+
+    cn_industry_maps = query_maps('infoes', 'cn_industry')
+
+    @staticmethod
     def cn_industry_cname(code):
         """国证行业编码含义"""
         code = str(code)
@@ -250,6 +289,15 @@ class Fundamentals(object):
         attr_name = 'cn_industry'
         maps = query_maps(table_name, attr_name)
         return maps[code]
+
+    @staticmethod
+    def cn_industry_code(key):
+        """关键词模糊查询国证行业编码"""
+        table_name = 'infoes'
+        attr_name = 'cn_industry'
+        maps = query_maps(table_name, attr_name)
+        out = {k: v for k, v in maps.items() if key in v}   
+        return out
 
     #========================数据集========================#
 

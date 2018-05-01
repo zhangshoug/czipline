@@ -21,6 +21,7 @@ from cswd.sql.base import session_scope
 from cswd.sql.models import Stock, Issue, Category, StockCategory, TradingCalendar
 from cswd.websource.juchao import fetch_industry_stocks
 from .writer import write_dataframe
+from .constants import SECTOR_NAMES, SUPER_SECTOR_NAMES
 
 
 def latest_trading_day():
@@ -63,44 +64,44 @@ def market_map(stock_code):
     else:
         return '未知'
 
-def sector_code_name(industry_code):
-    """国证行业分类映射为部门行业分类"""
+
+def sector_code_map(industry_code):
+    """
+    国证行业分类映射为部门行业分类
+    
+    国证一级行业分10类，转换为sector共11组，单列出房地产。
+    """
     if industry_code[:3] == 'C01':
-        return '能源'
+        return 309
     if industry_code[:3] == 'C02':
-        return '基本材料'
+        return 101
     if industry_code[:3] == 'C03':
-        return '工业领域'
+        return 310
     if industry_code[:3] == 'C04':
-        return '主要消费'
+        return 205
     if industry_code[:3] == 'C05':
-        return '可选消费'
+        return 102
     if industry_code[:3] == 'C06':
-        return '医疗保健'
+        return 206
     if industry_code.startswith('C07'):
         if industry_code[:5] == 'C0703':
-            return '房地产'
+            return 104
         else:
-            return '金融服务'
+            return 103
     if industry_code[:3] == 'C08':
-        return '工程技术'
+        return 311
     if industry_code[:3] == 'C09':
-        return '通讯服务'
+        return 308
     if industry_code[:3] == 'C10':
-        return '公用事业'
-    return '未分类'
+        return 207
+    return -1
 
 
-def supper_sector_code_name(sector_code):
+def supper_sector_code_map(sector_code):
     """行业分类映射超级行业分类"""
-    if sector_code in ('基本材料', '主要消费', '金融服务', '房地产'):
-        return '周期'
-    elif sector_code in ('可选消费', '医疗保健', '公用事业'):
-        return '防御'
-    elif sector_code in ('通讯服务', '能源', '工业领域', '工程技术'):
-        return '敏感'
-    else:
-        return '未分类'
+    if sector_code == -1:
+        return -1
+    return int(str(sector_code)[0])
 
 
 def ipo_info():
@@ -189,15 +190,17 @@ def cninfo_industry_info():
     """
     d = latest_trading_day()
     df = fetch_industry_stocks(date_=d, department='cninfo')
-    # 更改部门代码
-    sector_code = df['sector_code'].map(sector_code_name).values
-    super_sector_code = map(supper_sector_code_name, sector_code)
+    # 在此先映射部门及超级部门代码
+    # 在转换为类别前，处理部门、超级部门编码
+    # 为保持一致性，使用原始三位数编码
+    df['sector_code'] = df.industry_code.map(sector_code_map)
+    df['super_sector_code'] = df.sector_code.map(supper_sector_code_map)
     return pd.DataFrame(
         {
             'sid': df.code.values,
-            'sector_code': sector_code,
-            'super_sector_code': list(super_sector_code),
             'cn_industry': df.industry_name.values,
+            'sector_code':df.sector_code.values,
+            'super_sector_code':df.super_sector_code.values,
         }
     )
 
@@ -301,12 +304,15 @@ def static_info_table():
     ).merge(
         concept, how='left', on='sid'
     )
-    cate_cols = ['market', 'region', 'csrc_industry', 'ths_industry',
-                 'cn_industry', 'sector_code', 'super_sector_code']
+    cate_cols = ['market', 'region', 'csrc_industry',
+                 'ths_industry', 'cn_industry']
     for col in cate_cols:
         df, m = handle_cate(df, col)
         maps[col] = m
     maps['concept'] = name_maps
+    maps['sector_code'] = SECTOR_NAMES
+    maps['super_sector_code'] = SUPER_SECTOR_NAMES
+    # 处理
     _fillna(df, cate_cols)
     return df, maps
 

@@ -80,3 +80,5 @@ TAGS
 .vscode
 .cache
 .pytest_cache
+
+README.ipynp

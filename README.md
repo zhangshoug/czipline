@@ -215,7 +215,7 @@ def myfunc(context, data):
     2017-10-31 15:00:00+08:00 -1.6233534895267374 -0.795885505339075
     2017-11-30 15:00:00+08:00 -2.965097825507776 4.4434701009908615
     2017-12-29 15:00:00+08:00 -1.1942883365086068 -0.38062423581176485
-    [2018-05-02 00:30:20.701634] INFO: zipline.finance.metrics.tracker: Simulated 244 trading days
+    [2018-05-02 00:57:22.446560] INFO: zipline.finance.metrics.tracker: Simulated 244 trading days
     first open: 2017-01-03 01:31:00+00:00
     last close: 2017-12-29 07:00:00+00:00
 
@@ -1761,9 +1761,9 @@ def myfunc(context, data):
 
 ```python
 %%html
-<img src=https://github.com/liudengfeng/czipline/blob/master/docs/%E4%BB%8B%E7%BB%8D%E6%9D%90%E6%96%99/ldf.png,width=40,height=40>
+<img src="./images/ldf.png",width=40px,height=40px>
 ```
 
 
-<img src=https://github.com/liudengfeng/czipline/blob/master/docs/%E4%BB%8B%E7%BB%8D%E6%9D%90%E6%96%99/ldf.png,width=40,height=40>
+<img src="./images/ldf.png",width=40px,height=40px>
 

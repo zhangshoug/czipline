@@ -56,5 +56,6 @@ PATH=/home/ldf/anaconda3/envs/zipline/bin:/home/ldf/anaconda3/bin:/home/ldf/anac
 30  22 * * 1-5 zipline clean -b cndaily -k 2
 
 # 转换sql数据至bcolz格式
-30 22 * * 1-5 python /home/ldf/source/czipline/zipline/tasks.py >> /home/ldf/stockdata/logs/sql_to_bcolz.log 2>&1 
+#30 22 * * 1-5 python /home/ldf/source/czipline/zipline/tasks.py >> /home/ldf/stockdata/logs/sql_to_bcolz.log 2>&1 
+0  23 * * 1-5 sql-to-bcolz >> /home/ldf/stockdata/logs/tobcolz.log 2>&1
 

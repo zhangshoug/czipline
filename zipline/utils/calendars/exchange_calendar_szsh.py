@@ -1,5 +1,5 @@
 from datetime import time
-
+import pandas as pd
 from pytz import timezone
 
 from zipline.utils.calendars import TradingCalendar
@@ -69,3 +69,11 @@ class SZSHExchangeCalendar(TradingCalendar):
     @property
     def adhoc_holidays(self):
         return get_adhoc_holidays()
+
+    @property
+    def actual_last_session(self):
+        """最后交易日"""
+        now = pd.Timestamp.utcnow()
+        trading_days = self.all_sessions
+        actual = trading_days[trading_days.get_loc(now, method='ffill')]
+        return actual

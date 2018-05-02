@@ -123,7 +123,7 @@ def gen_symbol_data(symbol_map,
 
 @bundles.register('cndaily',
                   calendar_name='SZSH',
-                  end_session=pd.Timestamp('now', tz='Asia/Shanghai'),
+                #   end_session=pd.Timestamp('now', tz='Asia/Shanghai'),
                   minutes_per_day=241)
 def cndaily_bundle(environ,
                    asset_db_writer,
@@ -175,7 +175,7 @@ def cndaily_bundle(environ,
 
 @bundles.register('cntdaily',
                   calendar_name='SZSH',
-                  end_session=pd.Timestamp('now', tz='Asia/Shanghai'),
+                #   end_session=pd.Timestamp('now', tz='Asia/Shanghai'),
                   minutes_per_day=241)
 def cntdaily_bundle(environ,
                     asset_db_writer,
@@ -228,7 +228,7 @@ def cntdaily_bundle(environ,
                   calendar_name='SZSH',
                   start_session=pd.Timestamp(
                       'now', tz='Asia/Shanghai') - pd.Timedelta(days=30),
-                  end_session=pd.Timestamp('now', tz='Asia/Shanghai'),
+                #   end_session=pd.Timestamp('now', tz='Asia/Shanghai'),
                   minutes_per_day=241)
 def cnminutely_bundle(environ,
                       asset_db_writer,
@@ -283,7 +283,7 @@ def cnminutely_bundle(environ,
                   calendar_name='SZSH',
                   start_session=pd.Timestamp(
                       'now', tz='Asia/Shanghai') - pd.Timedelta(days=30),
-                  end_session=pd.Timestamp('now', tz='Asia/Shanghai'),
+                #   end_session=pd.Timestamp('now', tz='Asia/Shanghai'),
                   minutes_per_day=241)
 def cntminutely_bundle(environ,
                        asset_db_writer,

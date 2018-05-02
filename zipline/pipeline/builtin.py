@@ -20,12 +20,12 @@ from .fundamentals.reader import Fundamentals
 #============================辅助函数区=============================#
 
 
-def continuous_num(data, include=False):
+def continuous_num(bool_values, include=False):
     """尾部连续为真累计数"""
-    assert data.ndim <= 2, "数据ndim不得大于2"
-    assert data.dtype is np.dtype('bool'), '数据类型应为bool'
+    assert bool_values.ndim == 2, "数据ndim必须为2"
+    assert bool_values.dtype is np.dtype('bool'), '数据类型应为bool'
 
-    def compute(x):
+    def get_count(x):
         num = len(x)
         count = 0
         if not include:
@@ -37,8 +37,9 @@ def continuous_num(data, include=False):
         else:
             count = np.count_nonzero(x)
         return count
-    return np.apply_along_axis(compute, 0, data)
-
+    # 本应使用已注释代码，但出现问题。原因不明？？？
+    # return np.apply_along_axis(get_count, 0, bool_values)
+    return pd.DataFrame(bool_values).apply(get_count).values
 
 def quarterly_multiplier(dates):
     """

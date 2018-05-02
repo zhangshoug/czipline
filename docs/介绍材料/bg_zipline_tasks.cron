@@ -51,7 +51,7 @@ PATH=/home/ldf/anaconda3/envs/zipline/bin:/home/ldf/anaconda3/bin:/home/ldf/anac
 
 # zipline部分
 # ingest
-0  22 * * 1-5 zipline ingest -b cndaily
+0  22 * * 1-5 zipline ingest -b cndaily >> /home/ldf/stockdata/logs/ingest.log 2>&1
 
 # 转换sql数据至bcolz格式
 30 22 * * 1-5 python /home/ldf/source/czipline/zipline/tasks.py >> /home/ldf/stockdata/logs/sql_to_bcolz.log 2>&1 

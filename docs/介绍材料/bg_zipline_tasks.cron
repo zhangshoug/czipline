@@ -50,8 +50,10 @@ PATH=/home/ldf/anaconda3/envs/zipline/bin:/home/ldf/anaconda3/bin:/home/ldf/anac
 0 0 1 1 * python /home/ldf/source/csd/scripts/delete_old_data.py
 
 # zipline部分
-# ingest
+# 自动ingest
 0  22 * * 1-5 zipline ingest -b cndaily >> /home/ldf/stockdata/logs/ingest.log 2>&1
+# 正常完成ingest时间约15分钟左右,这里设置为30分钟后自动清除，仅仅保留最近2次的ingest数据
+30  22 * * 1-5 zipline clean -b cndaily -k 2
 
 # 转换sql数据至bcolz格式
 30 22 * * 1-5 python /home/ldf/source/czipline/zipline/tasks.py >> /home/ldf/stockdata/logs/sql_to_bcolz.log 2>&1 

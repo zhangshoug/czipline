@@ -49,7 +49,6 @@ class Returns(CustomFactor):
                 "given {window_length}. For daily returns, use a window "
                 "length of 2.".format(window_length=self.window_length)
             )
-
     def compute(self, today, assets, out, close):
         out[:] = (close[-1] - close[0]) / close[0]
 

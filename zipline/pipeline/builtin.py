@@ -20,21 +20,24 @@ from .fundamentals.reader import Fundamentals
 #============================辅助函数区=============================#
 
 
-def continuous_num(df):
-    """计算连续数量"""
-    msg = "数据框所有列类型都必须为`np.dtype('bool')`"
-    assert all(df.dtypes == np.dtype('bool')), msg
+def continuous_num(data, include=False):
+    """尾部连续为真累计数"""
+    assert data.ndim <= 2, "数据ndim不得大于2"
+    assert data.dtype is np.dtype('bool'), '数据类型应为bool'
 
     def compute(x):
         num = len(x)
-        res = 0
-        for i in range(num-1, 0, -1):
-            if x[i] == 0:
-                break
-            else:
-                res += 1
-        return res
-    return df.apply(compute, axis=0).values
+        count = 0
+        if not include:
+            for i in range(num - 1, 0, -1):
+                # 自尾部循环，一旦存在假，则返回
+                if x[i] == 0:
+                    break
+            count += 1
+        else:
+            count = np.count_nonzero(x)
+        return count
+    return np.apply_along_axis(compute, 0, data)
 
 
 def quarterly_multiplier(dates):
@@ -62,68 +65,56 @@ def quarterly_multiplier(dates):
         qs = pd.DataFrame(dates).applymap(func)
     return 4 / qs
 
+
 #============================自定义因子=============================#
 
 
-class SuccessiveYZZT(CustomFactor):
+class SuccessiveYZ(CustomFactor):
     """
-    连续一字涨停数量
+    尾部窗口一字数量
 
     Parameters
     ----------
+    include : bool
+        是否计算全部一字数量，若为否，则只计算尾部连续一字数量
+        可选参数。默认为否。
     include_st : bool
         可选参数。是否包含ST股票。默认包含。
+    window_length : int
+        可选参数。默认为100天，不小于3。
 
     returns
     -------
-        连续一字涨停数量
+        连续一字涨停数量， 连续一字跌停数量
 
     Notes:
     ------
         截至当前连续一字板数量。
         1. 最高 == 最低
-        2. 涨停
+        2. 涨跌幅超限
     """
-    params = {'include_st': True}
+    params = {'include_st': True,
+              'include': False}
     inputs = [USEquityPricing.high, USEquityPricing.low, USEquityPricing.close]
+    outputs = ['zt', 'dt']
+    window_length = 100
 
-    def compute(self, today, assets, out, high, low, close, include_st):
+    def _validate(self):
+        super(SuccessiveYZ, self)._validate()
+        if self.window_length < 3:
+            raise ValueError('window_length值必须大于2')
+
+    def compute(self, today, assets, out, high, low, close, include_st, include):
         limit = 0.04 if include_st else 0.09
-        is_zt = pd.DataFrame(close).pct_change() >= limit
-        is_yz = pd.DataFrame((high == low))
+        # shape = (window_length - 1, N_assets)
+        pct = (close[1:] - close[:-1]) / close[:-1]  # 当日涨跌幅，而非期间涨跌幅
+        is_yz = (high == low)[1:]  # 保持形状一致
+        is_zt = pct > limit
+        is_dt = pct < -limit
         yz_zt = is_zt & is_yz
-        out[:] = continuous_num(yz_zt)
-
-
-class SuccessiveYZDT(CustomFactor):
-    """
-    连续一字涨停数量
-
-    Parameters
-    ----------
-    include_st : bool
-        可选参数。是否包含ST股票。默认包含。
-
-    returns
-    -------
-        连续一字跌停数量
-
-    Notes:
-    ------
-        截至当前连续一字板数量。
-        1. 最高 == 最低
-        2. 跌停
-    """
-    params = {'include_st': True}
-    inputs = [USEquityPricing.high, USEquityPricing.low, USEquityPricing.close]
-    # outputs = ['zt', 'dt']
-
-    def compute(self, today, assets, out, high, low, close, include_st):
-        limit = -0.04 if include_st else -0.09
-        is_dt = pd.DataFrame(close).pct_change() < limit
-        is_yz = pd.DataFrame((high == low))
-        yz_zt = is_dt & is_yz
-        out[:] = continuous_num(yz_zt)
+        yz_dt = is_dt & is_yz
+        out.zt = continuous_num(yz_zt, include)
+        out.dt = continuous_num(yz_dt, include)
 
 
 class NDays(CustomFactor):
@@ -147,7 +138,7 @@ class NDays(CustomFactor):
 
 class TradingDays(CustomFactor):
     """
-    窗口期内有效交易天数
+    窗口期内所有有效交易天数
 
     Parameters
     ----------
@@ -162,6 +153,32 @@ class TradingDays(CustomFactor):
 
     def compute(self, today, assets, out, vs):
         out[:] = np.count_nonzero(vs, 0)
+
+
+class SuccessiveSuspensionDays(CustomFactor):
+    """
+    尾部窗口停牌交易日数
+
+    Parameters
+    ----------
+    **Default Inputs:** None
+
+    window_length：int
+        窗口数量，可选，默认90天
+    include : bool
+        是否计算窗口全部停牌，若为否，则只计算尾部连续停牌
+        可选参数。默认为否。
+
+    returns
+    -------
+        连续停牌天数
+    """
+    inputs = [USEquityPricing.amount]
+    window_length = 90
+    params = {'include': False}
+    def compute(self, today, assets, out, vs, include):
+        is_suspension = vs == 0
+        out[:] = continuous_num(is_suspension, include)
 
 
 #================================过滤器=============================#
@@ -315,6 +332,36 @@ class IsYZDT(CustomFilter):
             # 涨幅超过6%，排除ST股票
             is_xd = (cs[-1] - cs[0]) / cs[0] < -0.06
         out[:] = is_yz & is_xd
+
+
+class IsResumed(CustomFilter):
+    """
+    当日是否为停牌后复牌的首个交易日
+
+    Parameters
+    ----------
+    **Default Inputs:** None
+
+    **Default Window Length:** None
+
+    备注
+    ----
+        首日成交量为0,次日有成交
+    """
+    inputs = [USEquityPricing.amount]
+    window_safe = True
+    window_length = 2
+
+    def _validate(self):
+        super(IsResumed, self)._validate()
+        if self.window_length != 2:
+            raise ValueError('window_length值必须为2')
+
+    def compute(self, today, assets, out, amount):
+        is_tp = amount[0] == 0
+        is_fp = (amount[-1] - amount[0]) > 0
+        out[:] = is_tp & is_fp
+
 
 #==============================财务相关=============================#
 

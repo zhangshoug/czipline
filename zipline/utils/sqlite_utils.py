@@ -32,7 +32,8 @@ def group_into_chunks(items, chunk_size=SQLITE_MAX_VARIABLE_NUMBER):
 
 def verify_sqlite_path_exists(path):
     if path != ':memory:' and not os.path.exists(path):
-        raise ValueError("SQLite file {!r} doesn't exist.".format(path))
+        msg = '后台数据转换(ingest)任务正在进行中，请稍候'
+        raise ValueError("或者SQLite文件{!r}不存在，或者{}".format(path, msg))
 
 
 def check_and_create_connection(path, require_exists):

@@ -165,6 +165,8 @@ class SuccessiveSuspensionDays(CustomFactor):
 
     window_length：int
         窗口数量，可选，默认90天
+        **注意**如果实际停牌天数超过`window_length`，最多`window_length`-1天
+        设置window_length过大，有计算副作用
     include : bool
         是否计算窗口全部停牌，若为否，则只计算尾部连续停牌
         可选参数。默认为否。
@@ -347,8 +349,9 @@ class IsResumed(CustomFilter):
     备注
     ----
         首日成交量为0,次日有成交
+        首日市值>0，排除新股上市
     """
-    inputs = [USEquityPricing.amount]
+    inputs = [USEquityPricing.amount, USEquityPricing.cmv]
     window_safe = True
     window_length = 2
 
@@ -357,10 +360,11 @@ class IsResumed(CustomFilter):
         if self.window_length != 2:
             raise ValueError('window_length值必须为2')
 
-    def compute(self, today, assets, out, amount):
+    def compute(self, today, assets, out, amount, cmv):
         is_tp = amount[0] == 0
         is_fp = (amount[-1] - amount[0]) > 0
-        out[:] = is_tp & is_fp
+        not_new = cmv[0] > 0  # 通过流通市值排除新股上市
+        out[:] = is_tp & is_fp & not_new
 
 
 #==============================财务相关=============================#

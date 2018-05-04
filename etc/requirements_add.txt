@@ -2,13 +2,25 @@
 git+https://github.com/liudengfeng/cswd#egg=cswd
 
 # blaze(三部分，其中odo与blaze因networkx使用版本2.1,有小幅度改动)
+
+# 1. datashape
 datashape>=0.5.2
 
-# odo
+# 2. odo
 git+https://github.com/liudengfeng/odo#egg=odo
 
+# 3. blaze
 git+https://github.com/liudengfeng/blaze#egg=blaze
 
-# empyrical
+# 金融统计包`empyrical`
 git+https://github.com/liudengfeng/empyrical#egg=empyrical
+
+# 投资组合风险分析包`pyfolio`
+git+https://github.com/liudengfeng/pyfolio#egg=pyfolio
+
+
+# 预测因子分析包`alphalens`
+git+https://github.com/liudengfeng/alphalens#egg=alphalens
+
+
 

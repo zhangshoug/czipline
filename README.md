@@ -39,6 +39,13 @@ $ git clone https://github.com/liudengfeng/czipline.git
 下载并安装ta-lib包以及数据处理包、统计分析包。转移至项目安装文件所在目录后执行：
 
 ```bash
+$ wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
+$ tar -xvzf ta-lib-0.4.0-src.tar.gz
+$ cd ta-lib/
+$ ./configure --prefix=/usr
+$ make
+$ sudo make install
+$ # 以下需确保在zipline项目安装目录下执行
 $ pip install -r ./etc/requirements.txt
 $ pip install -r ./etc/requirements_add.txt
 ```
@@ -55,7 +62,7 @@ $ python setup.py build_ext --inplace
 
 
 ```bash
-python setup.py install
+$ python setup.py install
 $ # 如需开发安装
 $ python setup.py develop
 ```

@@ -38,13 +38,9 @@ $ git clone https://github.com/liudengfeng/czipline.git
 ##### 安装依赖包
 下载并安装ta-lib包以及数据处理包、统计分析包。转移至项目安装文件所在目录后执行：
 
+`talib`安装网址，参考https://github.com/mrjbq7/ta-lib)
+
 ```bash
-$ wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
-$ tar -xvzf ta-lib-0.4.0-src.tar.gz
-$ cd ta-lib/
-$ ./configure --prefix=/usr
-$ make
-$ sudo make install
 $ # 以下需确保在zipline项目安装目录下执行
 $ pip install -r ./etc/requirements.txt
 $ pip install -r ./etc/requirements_add.txt

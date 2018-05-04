@@ -36,42 +36,40 @@ $ git clone https://github.com/liudengfeng/czipline.git
 ```
 
 ##### 安装依赖包
+下载并安装ta-lib包以及数据处理包、统计分析包。转移至项目安装文件所在目录后执行：
 
-
-```python
-# $ # 转移至项目安装文件所在目录
-# $ pip install -r ./etc/requirements.txt
-# $ pip install -r ./etc/requirements_add.txt
-
-# $ # 下载并安装ta-lib包
+```bash
+$ pip install -r ./etc/requirements.txt
+$ pip install -r ./etc/requirements_add.txt
 ```
+
 
 ##### 编译`C`扩展库
 
 
-```python
-# $ python setup.py build_ext --inplace
+```bash
+$ python setup.py build_ext --inplace
 ```
 
 ##### 安装`zipline`
 
 
-```python
-# $ python setup.py install
-# $ # 如需开发安装
-# $ python setup.py develop
+```bash
+python setup.py install
+$ # 如需开发安装
+$ python setup.py develop
 ```
 
 #### 准备数据
 成功安装`zipline`后，`cswd`包也已经成功安装。在相应环境下，执行以下命令：
 
 
-```python
-# $ init-stock-data # 初始化基础数据。首次耗时大约4小时，以后每日后台自动刷新约半小时
+```bash
+$ init-stock-data # 初始化基础数据。首次耗时大约4小时，以后每日后台自动刷新约半小时
 
-# $ zipline ingest -b cndaily # 转换日线数据，耗时约10分钟
+$ zipline ingest -b cndaily # 转换日线数据，耗时约10分钟
 
-# $ sql-to-bcolz # `Fundamentals`数据，耗时约1.5分钟
+$ sql-to-bcolz # `Fundamentals`数据，耗时约1.5分钟
 ```
 
 #### 使用

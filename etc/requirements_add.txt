@@ -1,6 +1,8 @@
 # A股数据工具包
 git+https://github.com/liudengfeng/cswd#egg=cswd
 
+cloudpickle>=0.2.1
+
 # blaze(三部分，其中odo与blaze因networkx使用版本2.1,有小幅度改动)
 
 # 1. datashape

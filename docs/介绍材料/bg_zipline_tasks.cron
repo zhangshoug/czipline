@@ -12,42 +12,42 @@
 PATH=/home/ldf/anaconda3/envs/zipline/bin:/home/ldf/anaconda3/bin:/home/ldf/anaconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
 
 # 24小时财经新闻（每分钟执行一次）
-* * * * *  python /home/ldf/source/csd/scripts/flush_global_news.py >> /home/ldf/stockdata/logs/global_news.log 2>&1
+* * * * *  python /home/ldf/pkg_source/csd/scripts/flush_global_news.py >> /home/ldf/stockdata/logs/global_news.log 2>&1
 
 # 股票相关信息（分类、发行）
-0 8 * * * python /home/ldf/source/csd/scripts/daily.py >> /home/ldf/stockdata/logs/daily.log 2>&1 
+0 8 * * * python /home/ldf/pkg_source/csd/scripts/daily.py >> /home/ldf/stockdata/logs/daily.log 2>&1 
 
 # 交易日历
-30 9 * * 1-5 python /home/ldf/source/csd/scripts/flush_trading_calendar.py >> /home/ldf/stockdata/logs/trading_calendar.log 2>&1 
+30 9 * * 1-5 python /home/ldf/pkg_source/csd/scripts/flush_trading_calendar.py >> /home/ldf/stockdata/logs/trading_calendar.log 2>&1 
 
 # 盘前9:15执行
-15 9 * * * python /home/ldf/source/csd/scripts/before_trading.py >> /home/ldf/stockdata/logs/before_trading.log 2>&1
+15 9 * * * python /home/ldf/pkg_source/csd/scripts/before_trading.py >> /home/ldf/stockdata/logs/before_trading.log 2>&1
 
 # 实时报价（交易时段内提取实时报价数据，在内部使用循环，每分钟运行60次）
-30-59    9 * * 1-5 python /home/ldf/source/csd/scripts/flush_stock_quote.py >> /home/ldf/stockdata/logs/quote.log 2>&1 
-*       10 * * 1-5 python /home/ldf/source/csd/scripts/flush_stock_quote.py >> /home/ldf/stockdata/logs/quote.log 2>&1
-0-30    11 * * 1-5 python /home/ldf/source/csd/scripts/flush_stock_quote.py >> /home/ldf/stockdata/logs/quote.log 2>&1
-*    13-14 * * 1-5 python /home/ldf/source/csd/scripts/flush_stock_quote.py >> /home/ldf/stockdata/logs/quote.log 2>&1
-1       15 * * 1-5 python /home/ldf/source/csd/scripts/flush_stock_quote.py >> /home/ldf/stockdata/logs/quote.log 2>&1
+30-59    9 * * 1-5 python /home/ldf/pkg_source/csd/scripts/flush_stock_quote.py >> /home/ldf/stockdata/logs/quote.log 2>&1 
+*       10 * * 1-5 python /home/ldf/pkg_source/csd/scripts/flush_stock_quote.py >> /home/ldf/stockdata/logs/quote.log 2>&1
+0-30    11 * * 1-5 python /home/ldf/pkg_source/csd/scripts/flush_stock_quote.py >> /home/ldf/stockdata/logs/quote.log 2>&1
+*    13-14 * * 1-5 python /home/ldf/pkg_source/csd/scripts/flush_stock_quote.py >> /home/ldf/stockdata/logs/quote.log 2>&1
+1       15 * * 1-5 python /home/ldf/pkg_source/csd/scripts/flush_stock_quote.py >> /home/ldf/stockdata/logs/quote.log 2>&1
 
 # 根据公司公告刷新相关数据（业绩预告、财务报告），（整点：8,12,16,20）各执行一次
-0 8,12,16,20 * * * python /home/ldf/source/csd/scripts/flush_by_notice.py >> /home/ldf/stockdata/logs/performance_forecast.log 2>&1
+0 8,12,16,20 * * * python /home/ldf/pkg_source/csd/scripts/flush_by_notice.py >> /home/ldf/stockdata/logs/performance_forecast.log 2>&1
 
 # 刷新交易日历
-30 9 * * 1-5 python /home/ldf/source/csd/scripts/flush_trading_calendar.py >> /home/ldf/stockdata/logs/trading_calendar.log 2>&1
+30 9 * * 1-5 python /home/ldf/pkg_source/csd/scripts/flush_trading_calendar.py >> /home/ldf/stockdata/logs/trading_calendar.log 2>&1
 
 # 盘后刷新数据（日线、分时成绩），每天19,凌晨1点各执行一次
-0 19 * * 1-5 python /home/ldf/source/csd/scripts/after_trading.py >> /home/ldf/stockdata/logs/after_trading.log 2>&1
-0 1 * * 2-6 python /home/ldf/source/csd/scripts/after_trading.py >> /home/ldf/stockdata/logs/after_trading.log 2>&1
+0 19 * * 1-5 python /home/ldf/pkg_source/csd/scripts/after_trading.py >> /home/ldf/stockdata/logs/after_trading.log 2>&1
+0 1 * * 2-6 python /home/ldf/pkg_source/csd/scripts/after_trading.py >> /home/ldf/stockdata/logs/after_trading.log 2>&1
 
 # 每周六上午8点删除临时文件
-0 8 * * 6 python /home/ldf/source/csd/scripts/delete_tmp_files.py
+0 8 * * 6 python /home/ldf/pkg_source/csd/scripts/delete_tmp_files.py
 
 # 每周六上午10刷新财务报告、持股（重新刷新，防止遗漏）
-0 8 * * 6 python /home/ldf/source/csd/scripts/weekly.py >> /home/ldf/stockdata/logs/weekly.log 2>&1
+0 8 * * 6 python /home/ldf/pkg_source/csd/scripts/weekly.py >> /home/ldf/stockdata/logs/weekly.log 2>&1
 
 # 每月删除数据量大且过时的数据（股票报价、历史交易）
-0 0 1 1 * python /home/ldf/source/csd/scripts/delete_old_data.py
+0 0 1 1 * python /home/ldf/pkg_source/csd/scripts/delete_old_data.py
 
 # zipline部分
 # 自动ingest
@@ -56,6 +56,6 @@ PATH=/home/ldf/anaconda3/envs/zipline/bin:/home/ldf/anaconda3/bin:/home/ldf/anac
 30  22 * * 1-5 zipline clean -b cndaily -k 2
 
 # 转换sql数据至bcolz格式
-#30 22 * * 1-5 python /home/ldf/source/czipline/zipline/tasks.py >> /home/ldf/stockdata/logs/sql_to_bcolz.log 2>&1 
+#30 22 * * 1-5 python /home/ldf/pkg_source/czipline/zipline/tasks.py >> /home/ldf/stockdata/logs/sql_to_bcolz.log 2>&1 
 0  23 * * 1-5 sql-to-bcolz >> /home/ldf/stockdata/logs/tobcolz.log 2>&1
 

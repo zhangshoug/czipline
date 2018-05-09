@@ -28,7 +28,7 @@ from zipline.gens.sim_engine import (
     BEFORE_TRADING_START_BAR
 )
 
-log = Logger('Trade Simulation')
+log = Logger('模拟交易')
 
 
 class AlgorithmSimulator(object):

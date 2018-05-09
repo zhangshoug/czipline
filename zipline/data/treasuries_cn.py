@@ -3,6 +3,7 @@
 """
 import pandas as pd
 
+from cswd.common.utils import sanitize_dates
 from cswd.sql.models import Treasury
 from cswd.sql.base import session_scope
 
@@ -18,6 +19,7 @@ def earliest_possible_date():
 
 
 def get_treasury_data(start_date, end_date):
+    start_date, end_date = sanitize_dates(start_date, end_date)
     # 确保为date类型
     start_date = pd.Timestamp(start_date).date()
     end_date = pd.Timestamp(end_date).date()

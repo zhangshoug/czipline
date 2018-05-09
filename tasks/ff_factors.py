@@ -10,18 +10,23 @@ TODO:完成五因子(加入盈利因子和投资因子)
 """
 
 import os
+import sys
 
 import logbook
 import pandas as pd
 from zipline import get_calendar
+from zipline.data.benchmarks_cn import get_cn_benchmark_returns
+from zipline.data.treasuries_cn import get_treasury_data
 from zipline.pipeline import CustomFactor, Pipeline
 from zipline.pipeline.data import USEquityPricing
 from zipline.pipeline.fundamentals import Fundamentals
-from zipline.data.benchmarks_cn import get_cn_benchmark_returns
-from zipline.data.treasuries_cn import get_treasury_data
 from zipline.research import run_pipeline
+
 from cswd.common.utils import data_root
 
+# 设置显示日志
+logbook.set_datetime_format('local')
+logbook.StreamHandler(sys.stdout).push_application()
 logger = logbook.Logger('构建ff因子')
 
 calendar = get_calendar('SZSH')
@@ -186,6 +191,7 @@ def get_factors_data(dates, symbol):
         mkt_rf = benchmark_returns.loc[d]
         rf = treasury_returns.loc[d]
         res.append((d, smb, hml, mom, mkt_rf, rf))
+        logger.info('当前处理日期：{}'.format(d.date()))
     df = pd.DataFrame.from_records(
         res, columns=['date', 'SMB', 'HML', 'Mom', 'Mkt-RF', 'RF'])
     df.set_index('date', inplace=True)
@@ -237,4 +243,3 @@ class FFFactor(object):
 if __name__ == '__main__':
     ff = FFFactor()
     ff.refresh()
-    print(ff.data.tail())

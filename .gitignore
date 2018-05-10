@@ -82,3 +82,5 @@ TAGS
 .pytest_cache
 
 README.ipynb
+
+.vs

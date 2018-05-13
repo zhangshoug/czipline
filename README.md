@@ -38,7 +38,7 @@ $ git clone https://github.com/liudengfeng/czipline.git
 ##### 安装依赖包
 下载并安装ta-lib包以及数据处理包、统计分析包。转移至项目安装文件所在目录后执行：
 
-`talib`安装方法[参考](https://github.com/mrjbq7/ta-lib)
+参考`talib`[安装方法](https://github.com/mrjbq7/ta-lib)
 
 ```bash
 $ # 以下需确保在zipline项目安装目录下执行
@@ -68,12 +68,14 @@ $ python setup.py develop
 
 
 ```bash
-$ init-stock-data # 初始化基础数据。首次耗时大约4小时，以后每日后台自动刷新约半小时
+$ init-stock-data # 初始化基础数据。耗时大约4小时(主要下载日线及最近一个月的分时交易数据。对数据量小，但抓取网页数据耗时长的，整理好的数据存放在github，初始化时会从该处提取，节约初始化时间。)
 
 $ zipline ingest -b cndaily # 转换日线数据，耗时约10分钟
 
 $ sql-to-bcolz # `Fundamentals`数据，耗时约1.5分钟
 ```
+初始化数据后，参考https://github.com/liudengfeng/czipline/blob/master/docs/%E4%BB%8B%E7%BB%8D%E6%9D%90%E6%96%99/bg_zipline_tasks.cron，设置后台计划任务。后台在盘后自动完成数据导入及转换。网络数据的采集可能因各种原失败，请注意查阅日志文档。文档默认路径为"～/stockdata/logs"。
+
 #### 验证安装
 如能正常运行以下代码，证明已经安装成功。(注意，由于版本兼容问题，安装过程中会有大量警告信息，只要不是错误，可忽略)
 
@@ -81,7 +83,7 @@ $ sql-to-bcolz # `Fundamentals`数据，耗时约1.5分钟
 from zipline import get_calendar
 c = get_calendar('SZSH')
 c.first_session
-$ # Timestamp('1990-12-19 00:00:00+0000', tz='UTC', freq='C')
+# Timestamp('1990-12-19 00:00:00+0000', tz='UTC', freq='C')
 ```
 
 #### 使用

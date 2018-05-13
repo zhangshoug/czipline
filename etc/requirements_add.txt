@@ -1,5 +1,5 @@
 # A股数据工具包
-git+https://github.com/liudengfeng/cswd#egg=cswd
+-e git+https://github.com/liudengfeng/cswd#egg=cswd
 
 cloudpickle>=0.2.1
 
@@ -9,20 +9,20 @@ cloudpickle>=0.2.1
 datashape>=0.5.2
 
 # 2. odo
-git+https://github.com/liudengfeng/odo#egg=odo
+-e git+https://github.com/liudengfeng/odo#egg=odo
 
 # 3. blaze
-git+https://github.com/liudengfeng/blaze#egg=blaze
+-e git+https://github.com/liudengfeng/blaze#egg=blaze
 
 # 金融统计包`empyrical`
-git+https://github.com/liudengfeng/empyrical#egg=empyrical
+-e git+https://github.com/liudengfeng/empyrical#egg=empyrical
 
 # 投资组合风险分析包`pyfolio`
-git+https://github.com/liudengfeng/pyfolio#egg=pyfolio
+-e git+https://github.com/liudengfeng/pyfolio#egg=pyfolio
 
 
 # 预测因子分析包`alphalens`
-git+https://github.com/liudengfeng/alphalens#egg=alphalens
+-e git+https://github.com/liudengfeng/alphalens#egg=alphalens
 
 
 

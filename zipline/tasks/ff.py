@@ -240,6 +240,9 @@ class FFFactor(object):
         return self._read()
 
 
-if __name__ == '__main__':
+def main():
     ff = FFFactor()
     ff.refresh()
+    
+if __name__ == '__main__':
+    main()

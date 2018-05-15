@@ -37,9 +37,11 @@ def continuous_num(bool_values, include=False):
         else:
             count = np.count_nonzero(x)
         return count
+
     # 本应使用已注释代码，但出现问题。原因不明？？？
     # return np.apply_along_axis(get_count, 0, bool_values)
     return pd.DataFrame(bool_values).apply(get_count).values
+
 
 def quarterly_multiplier(dates):
     """
@@ -59,7 +61,10 @@ def quarterly_multiplier(dates):
 
         乘数 = 4 / 3
     """
-    def func(x): return x.quarter
+
+    def func(x):
+        return x.quarter
+
     if dates.ndim == 1:
         qs = pd.Series(dates).map(func)
     else:
@@ -94,8 +99,7 @@ class SuccessiveYZ(CustomFactor):
         1. 最高 == 最低
         2. 涨跌幅超限
     """
-    params = {'include_st': True,
-              'include': False}
+    params = {'include_st': True, 'include': False}
     inputs = [USEquityPricing.high, USEquityPricing.low, USEquityPricing.close]
     outputs = ['zt', 'dt']
     window_length = 100
@@ -105,7 +109,8 @@ class SuccessiveYZ(CustomFactor):
         if self.window_length < 3:
             raise ValueError('window_length值必须大于2')
 
-    def compute(self, today, assets, out, high, low, close, include_st, include):
+    def compute(self, today, assets, out, high, low, close, include_st,
+                include):
         limit = 0.04 if include_st else 0.09
         # shape = (window_length - 1, N_assets)
         pct = (close[1:] - close[:-1]) / close[:-1]  # 当日涨跌幅，而非期间涨跌幅
@@ -179,6 +184,7 @@ class SuccessiveSuspensionDays(CustomFactor):
     inputs = [USEquityPricing.amount]
     window_length = 90
     params = {'include': False}
+
     def compute(self, today, assets, out, vs, include):
         is_suspension = vs == 0
         out[:] = continuous_num(is_suspension, include)
@@ -258,8 +264,8 @@ def TopAverageAmount(N=500, window_length=21):
     ----
         以窗口长度内平均成交额为标准        
     """
-    high_amount = SimpleMovingAverage(inputs=[USEquityPricing.amount],
-                                      window_length=window_length).top(N)
+    high_amount = SimpleMovingAverage(
+        inputs=[USEquityPricing.amount], window_length=window_length).top(N)
     return high_amount
 
 
@@ -369,6 +375,27 @@ class IsResumed(CustomFilter):
 
 
 #==============================财务相关=============================#
+# class AnnualData(CustomFactor):
+#     """
+#     最近第n年的年报科目数据
+#     """
+#     params = ('n',)
+
+#     def _validate(self):
+#         super(AnnualData, self)._validate()
+
+#         if self.window_length < 260:
+#             raise ValueError('window_length值必须或等于260,以确保获取一年的财务数据')
+
+#     def compute(self, today, assets, out, *values, n):
+#         # 计算期间季度数发生变化的位置，简化计算量
+#         # 选取最近四个季度的日期所对应的位置
+#         loc = changed_locations(asof_date[:, 0], include_first=True)[-4:]
+#         adj = quarterly_multiplier(asof_date[loc])
+#         # 将各季度调整为年销售额，然后再平均
+#         res = nanmean(np.multiply(sales[loc], adj), axis=0)
+#         # 收入单位为万元
+#         out[:] = res * 10000
 
 
 class TTMSale(CustomFactor):
@@ -379,8 +406,10 @@ class TTMSale(CustomFactor):
     ------
     trailing 12-month (TTM)
     """
-    inputs = [Fundamentals.profit_statement.A001,
-              Fundamentals.profit_statement.asof_date]
+    inputs = [
+        Fundamentals.profit_statement.A001,
+        Fundamentals.profit_statement.asof_date
+    ]
     # 一年的交易日不会超过260天
     window_length = 260
 
@@ -408,8 +437,7 @@ class TTMDividend(CustomFactor):
     ------
     trailing 12-month (TTM)
     """
-    inputs = [Fundamentals.dividend.amount,
-              Fundamentals.dividend.asof_date]
+    inputs = [Fundamentals.dividend.amount, Fundamentals.dividend.asof_date]
     # 一年的交易日不会超过260天
     window_length = 260
 
@@ -419,7 +447,9 @@ class TTMDividend(CustomFactor):
             raise ValueError('window_length值必须大于或等于260,以确保获取一年的财务数据')
 
     def compute(self, today, assets, out, ds, asof_date):
-        def func(x): return x.month
+        def func(x):
+            return x.month
+
         mns = pd.Series(asof_date[:, 0]).map(func)
         # mns = np.apply_along_axis(func, 0, asof_date[:,0])
         # 选取最近12个月的日期所对应的位置
@@ -452,6 +482,8 @@ def shares_outstanding():
 def shares_outstanding_2():
     """流通股本"""
     return USEquityPricing.circulating_share.latest
+
+
 # 以下为估值相关比率
 
 

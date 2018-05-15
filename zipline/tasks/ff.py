@@ -4,9 +4,9 @@
     2. 完成ingest；
     3. 完成sql-to-bcolz脚本；
 
-每个交易日晚上11：00运行
+运行频率：
+    每个交易日晚上11：00运行
 
-TODO:完成五因子(加入盈利因子和投资因子)
 """
 
 import os
@@ -103,7 +103,7 @@ class BookEquity(CustomFactor):
         out[:] = book[0]
 
 
-def make_3_pipeline():
+def make_pipeline():
     """构造3因子pipeline"""
     mkt_cap = MarketEquity()
     book_equity = BookEquity()
@@ -122,7 +122,7 @@ def compute_factors(one_day):
     """
     根据每天运行的pipeline结果，近似计算Fama-French 因子
     """
-    factors = run_pipeline(make_3_pipeline(), one_day, one_day)
+    factors = run_pipeline(make_pipeline(), one_day, one_day)
     # 获取后续使用的值
     returns = factors['returns']
     mkt_cap = factors.sort_values(['market_cap'], ascending=True)

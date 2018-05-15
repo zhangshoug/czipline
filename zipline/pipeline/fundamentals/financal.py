@@ -44,6 +44,7 @@ def get_preprocessed_dates():
     dates = dates[['报告期', '实际披露', '股票代码']]
     dates.columns = col_names
     for col in col_names:
+        # 转换日期类型(原始日期值为str类型)
         if col != 'code':
             dates[col] = dates[col].map(lambda x: pd.Timestamp(x).date())
     return dates
@@ -63,8 +64,8 @@ def normalize_ad_ts_sid(df, preprocessed_dates):
     out['sid'] = out['code'].map(lambda x: int(x))
     out['asof_date'] = pd.to_datetime(out['asof_date'])
     out['timestamp'] = pd.to_datetime(out['timestamp'])
-    # 丢弃不再需要的列
-    out.drop(['code', 'report_end_date'], axis=1, inplace=True)
+    # 舍弃code列，保留report_end_date列
+    out.drop(['code'], axis=1, inplace=True)
     return out
 
 

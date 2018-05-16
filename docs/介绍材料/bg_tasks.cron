@@ -1,0 +1,61 @@
+# 计划任务参考样本
+
+# 1. 设置PATH
+# 2. 更改到此文件路径，然后运行"crontab bg_tasks.cron"
+
+# 说明
+# "0"代表星期天
+# m h  dom mon dow   command
+
+#==============================设置PATH=======================================#
+# 在所在的python环境运行 echo $PATH，拷贝设置PATH环境变量
+PATH=/home/ldf/anaconda3/envs/zipline/bin:/home/ldf/anaconda3/bin:/home/ldf/anaconda3/bin:/home/ldf/anaconda3/bin:/home/ldf/anaconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+
+#================================实时任务=======================================#
+# 24小时财经新闻（每分钟执行一次）
+* * * * *  refresh-global-news >> ~/stockdata/logs/global_news.log 2>&1
+
+# 实时报价(开盘后每分钟运行一次)
+30-59    9 * * 1-5 refresh-stock-quote >> ~/stockdata/logs/quote.log 2>&1 
+*       10 * * 1-5 refresh-stock-quote >> ~/stockdata/logs/quote.log 2>&1
+0-30    11 * * 1-5 refresh-stock-quote >> ~/stockdata/logs/quote.log 2>&1
+*    13-14 * * 1-5 refresh-stock-quote >> ~/stockdata/logs/quote.log 2>&1
+1       15 * * 1-5 refresh-stock-quote >> ~/stockdata/logs/quote.log 2>&1
+
+#================================每日任务=======================================#
+# 盘前9:15执行
+15 9 * * * before-trading >> ~/stockdata/logs/before_trading.log 2>&1
+
+# 交易日历
+30 9 * * 1-5 refresh-trading-calendar >> ~/stockdata/logs/trading_calendar.log 2>&1 
+
+# 每日刷新
+0 8 * * * daily-refresh >> ~/stockdata/logs/daily_refresh.log 2>&1 
+
+# 公告刷新(业绩预告、财务报告)，整点：8,12,16,20各执行一次
+0 8,12,16,20 * * * daily-refresh-notice >> ~/stockdata/logs/by_notice.log 2>&1
+
+# 盘后刷新(日线、分时)，每天19点执行
+0 19 * * 1-5 refresh-trading-data >> ~/stockdata/logs/refresh_trading_data.log 2>&1
+
+#================================每周任务=======================================#
+# 每周六上午7点删除临时文件
+0 7 * * 6 delete-tmp-files
+
+# 每周六上午8点刷新
+0 8 * * 6 weekly-refresh >> ~/stockdata/logs/weekly.log 2>&1
+
+#================================每月任务=======================================#
+# 每月删除数据量大且过时的数据（股票报价、历史交易）
+0 0 1 1 * monthly-refresh >> ~/stockdata/logs/monthly.log 2>&1
+
+#================================zipline======================================#
+0  22 * * 1-5 zipline ingest -b cndaily >> ~/stockdata/logs/ingest.log 2>&1
+# 正常完成ingest时间约15分钟左右,这里设置为30分钟后自动清除，仅仅保留最近2次的ingest数据
+30  22 * * 1-5 zipline clean -b cndaily -k 2
+
+# 转换sql数据至bcolz格式
+0  23 * * 1-5 sql-to-bcolz >> ~/stockdata/logs/sql_to_bcolz.log 2>&1
+
+# ff因子
+30  23 * * 1-5 gen-ff-factors >> ~/stockdata/logs/gen_ff_factors.log 2>&1

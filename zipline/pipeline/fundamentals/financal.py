@@ -27,11 +27,7 @@ from cswd.sql.constants import (BALANCESHEET_ITEM_MAPS,
                                 YLNL_ITEM_MAPS, YYNL_ITEM_MAPS, ZYZB_ITEM_MAPS)
 
 from .base import STOCK_DB, bcolz_table_path
-
-
-QUARTERLY_TABLES = ['balance_sheets', 'profit_statements', 'cashflow_statements',
-                    'chnls', 'cznls', 'ylnls', 'yynls', 'zyzbs']
-
+from .constants import QUARTERLY_TABLES
 logger = Logger('财务报告')
 
 
@@ -44,65 +40,74 @@ def get_preprocessed_dates():
     dates = dates[['报告期', '实际披露', '股票代码']]
     dates.columns = col_names
     for col in col_names:
-        # 转换日期类型(原始日期值为str类型)
+        # 转换日期类型(原始日期值为str类型) -> Timestamp
         if col != 'code':
-            dates[col] = dates[col].map(lambda x: pd.Timestamp(x).date())
+            dates[col] = dates[col].map(lambda x: pd.Timestamp(x))
     return dates
 
 
 def normalize_ad_ts_sid(df, preprocessed_dates):
     """完成对实际公告日期的修正，转换股票代码为sid"""
-    out = df.merge(preprocessed_dates, how='left',
-                   on=['code', 'report_end_date'])
+    # 合并前，将report_end_date -> Timestamp
+    df['report_end_date'] = df['report_end_date'].map(
+        lambda x: pd.Timestamp(x))
+    out = df.merge(
+        preprocessed_dates, 
+        how='left', on=['code', 'report_end_date'],
+        validate='one_to_one',
+    )
+    # 存在公告日期
     has_adate = ~out['timestamp'].isna()
-    # 先赋值为报告截止日期后45天
+    # 先赋值截止日期为报告日期的后45天
     out['asof_date'] = out['report_end_date'] + pd.Timedelta(days=45)
-    # 修正截止日期
-    out.loc[has_adate,
-            'asof_date'] = out.loc[has_adate, 'timestamp'] - pd.Timedelta(days=1)
+    # 修正截止日期：对于存在公告日期的，将其设定为公告日期前一天，以此作为截止日期
+    out.loc[
+        has_adate,
+        'asof_date'] = out.loc[has_adate, 'timestamp'] - pd.Timedelta(days=1)
+    # 修正timestamp
+    out.loc[~has_adate, 'timestamp'] = out.loc[~has_adate, 'asof_date'] + pd.Timedelta(days=1)
     # 改变类型
     out['sid'] = out['code'].map(lambda x: int(x))
     out['asof_date'] = pd.to_datetime(out['asof_date'])
     out['timestamp'] = pd.to_datetime(out['timestamp'])
+    out['report_end_date'] = pd.to_datetime(out['report_end_date'])
     # 舍弃code列，保留report_end_date列
     out.drop(['code'], axis=1, inplace=True)
+    out.sort_values(['sid', 'report_end_date'], inplace=True)
     return out
 
 
 def normalized_financial_data(df, preprocessed_dates, maps):
     """财务报告数据"""
     df.drop(['更新时间', '序号', '公告日期'], axis=1, inplace=True)
-    df.rename(columns={'股票代码': 'code',
-                       '报告日期': 'report_end_date'}, inplace=True)
+    df.rename(
+        columns={
+            '股票代码': 'code',
+            '报告日期': 'report_end_date'
+        }, inplace=True)
     df.rename(columns={v: k for k, v in maps.items()}, inplace=True)
     return normalize_ad_ts_sid(df, preprocessed_dates)
 
 
 def _factory(table_name):
     if table_name == 'balance_sheets':
-        return partial(normalized_financial_data,
-                       maps=BALANCESHEET_ITEM_MAPS)
+        return partial(normalized_financial_data, maps=BALANCESHEET_ITEM_MAPS)
     elif table_name == 'profit_statements':
-        return partial(normalized_financial_data,
-                       maps=PROFITSTATEMENT_ITEM_MAPS)
+        return partial(
+            normalized_financial_data, maps=PROFITSTATEMENT_ITEM_MAPS)
     elif table_name == 'cashflow_statements':
-        return partial(normalized_financial_data,
-                       maps=CASHFLOWSTATEMENT_ITEM_MAPS)
+        return partial(
+            normalized_financial_data, maps=CASHFLOWSTATEMENT_ITEM_MAPS)
     elif table_name == 'zyzbs':
-        return partial(normalized_financial_data,
-                       maps=ZYZB_ITEM_MAPS)
+        return partial(normalized_financial_data, maps=ZYZB_ITEM_MAPS)
     elif table_name == 'ylnls':
-        return partial(normalized_financial_data,
-                       maps=YLNL_ITEM_MAPS)
+        return partial(normalized_financial_data, maps=YLNL_ITEM_MAPS)
     elif table_name == 'chnls':
-        return partial(normalized_financial_data,
-                       maps=CHNL_ITEM_MAPS)
+        return partial(normalized_financial_data, maps=CHNL_ITEM_MAPS)
     elif table_name == 'cznls':
-        return partial(normalized_financial_data,
-                       maps=CZNL_ITEM_MAPS)
+        return partial(normalized_financial_data, maps=CZNL_ITEM_MAPS)
     elif table_name == 'yynls':
-        return partial(normalized_financial_data,
-                       maps=YYNL_ITEM_MAPS)
+        return partial(normalized_financial_data, maps=YYNL_ITEM_MAPS)
     raise NotImplementedError(table_name)
 
 

@@ -31,3 +31,8 @@ SECTOR_NAMES = {
     310: '工业领域',
     311: '工程技术',
 }
+
+QUARTERLY_TABLES = [
+    'balance_sheets', 'profit_statements', 'cashflow_statements', 'chnls',
+    'cznls', 'ylnls', 'yynls', 'zyzbs'
+]

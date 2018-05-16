@@ -1,21 +1,20 @@
 import re
 import bcolz
 import blaze
+import pandas as pd
 from odo import discover
 
-from cswd.sql.constants import (BALANCESHEET_ITEM_MAPS,
-                                CASHFLOWSTATEMENT_ITEM_MAPS, CHNL_ITEM_MAPS,
-                                CZNL_ITEM_MAPS, MARGIN_MAPS,
-                                PROFITSTATEMENT_ITEM_MAPS, YLNL_ITEM_MAPS,
-                                YYNL_ITEM_MAPS, ZYZB_ITEM_MAPS)
+from cswd.sql.constants import (
+    BALANCESHEET_ITEM_MAPS, CASHFLOWSTATEMENT_ITEM_MAPS, CHNL_ITEM_MAPS,
+    CZNL_ITEM_MAPS, MARGIN_MAPS, PROFITSTATEMENT_ITEM_MAPS, YLNL_ITEM_MAPS,
+    YYNL_ITEM_MAPS, ZYZB_ITEM_MAPS)
 from zipline.utils.memoize import classlazyval
 
 from ..data.dataset import BoundColumn
 from ..loaders.blaze import from_blaze, global_loader
 from .base import bcolz_table_path
-from .constants import MARKET_MAPS, SECTOR_NAMES, SUPER_SECTOR_NAMES
-from .utils import (_normalized_dshape,
-                    make_default_missing_values_for_expr)
+from .constants import MARKET_MAPS, SECTOR_NAMES, SUPER_SECTOR_NAMES, QUARTERLY_TABLES
+from .utils import (_normalized_dshape, make_default_missing_values_for_expr)
 
 ITEM_CODE_PATTERN = re.compile(r'A\d{3}')
 
@@ -25,22 +24,26 @@ def verify_code(code):
         raise ValueError('编码格式应为A+三位整数。输入{}'.format(code))
 
 
-def from_bcolz_data(table_name):
+def from_bcolz_data(table_name, yearly=False):
     """读取bcolz格式的数据，生成DataSet"""
     rootdir = bcolz_table_path(table_name)
     ctable = bcolz.ctable(rootdir=rootdir, mode='r')
-    # # 不需要先转换为DataFrame？
     df = ctable.todataframe()
+    if yearly:
+        msg = '年报数据仅支持表名称{}'.format(QUARTERLY_TABLES)
+        assert table_name in QUARTERLY_TABLES, msg
+        # 刷选出年报部分(仅适用于财务报告)
+        is_year_end = df.report_end_date.map(lambda x: x.is_year_end)
+        df = df[is_year_end]
     raw_dshape = discover(df)
     df_dshape = _normalized_dshape(raw_dshape)
     expr = blaze.data(df, name=table_name, dshape=df_dshape)
-    return from_blaze(expr,
-                      loader=global_loader,
-                      no_deltas_rule='ignore',
-                      no_checkpoints_rule='ignore',
-                      #   deltas=None,
-                      #   checkpoints=None,
-                      missing_values=make_default_missing_values_for_expr(expr))
+    return from_blaze(
+        expr,
+        loader=global_loader,
+        no_deltas_rule='ignore',
+        no_checkpoints_rule='ignore',
+        missing_values=make_default_missing_values_for_expr(expr))
 
 
 def query_maps(table_name, attr_name):
@@ -52,6 +55,7 @@ def query_maps(table_name, attr_name):
 
 class Fundamentals(object):
     """股票基础数据集容器类"""
+
     @staticmethod
     def has_column(column):
         """简单判定列是否存在于`Fundamentals`各数据集中"""
@@ -143,8 +147,10 @@ class Fundamentals(object):
     @staticmethod
     def cashflow_col_code(key):
         """根据名称关键词模糊查询现金流量表项目编码"""
-        out = {k: v for k, v in CASHFLOWSTATEMENT_ITEM_MAPS.items()
-               if key in v}
+        out = {
+            k: v
+            for k, v in CASHFLOWSTATEMENT_ITEM_MAPS.items() if key in v
+        }
         return out
 
     @staticmethod
@@ -326,9 +332,19 @@ class Fundamentals(object):
         return from_bcolz_data(table_name='balance_sheets')
 
     @classlazyval
+    def balance_sheet_yearly(self):
+        """资产负债数据集(仅包含年度报告)"""
+        return from_bcolz_data('balance_sheets', True)
+
+    @classlazyval
     def profit_statement(self):
         """利润表数据集"""
         return from_bcolz_data(table_name='profit_statements')
+
+    @classlazyval
+    def profit_statement_yearly(self):
+        """年度利润表数据集(仅包含年度报告)"""
+        return from_bcolz_data('profit_statements', True)
 
     @classlazyval
     def cash_flow(self):
@@ -336,9 +352,19 @@ class Fundamentals(object):
         return from_bcolz_data(table_name='cashflow_statements')
 
     @classlazyval
+    def cash_flow_yearly(self):
+        """现金流量表数据集(仅包含年度报告)"""
+        return from_bcolz_data('cashflow_statements', True)
+
+    @classlazyval
     def key_financial_indicator(self):
         """主要财务指标数据集"""
         return from_bcolz_data(table_name='zyzbs')
+
+    @classlazyval
+    def key_financial_indicator_yearly(self):
+        """主要财务指标数据集(仅包含年度报告)"""
+        return from_bcolz_data('zyzbs', True)
 
     @classlazyval
     def earnings_ratio(self):
@@ -346,9 +372,19 @@ class Fundamentals(object):
         return from_bcolz_data(table_name='ylnls')
 
     @classlazyval
+    def earnings_ratio_yearly(self):
+        """盈利能力指标数据集(仅包含年度报告)"""
+        return from_bcolz_data('ylnls', True)
+
+    @classlazyval
     def solvency_ratio(self):
         """偿还能力指标数据集"""
         return from_bcolz_data(table_name='chnls')
+
+    @classlazyval
+    def solvency_ratio_yearly(self):
+        """偿还能力指标数据集(仅包含年度报告)"""
+        return from_bcolz_data('chnls', True)
 
     @classlazyval
     def growth_ratio(self):
@@ -356,9 +392,19 @@ class Fundamentals(object):
         return from_bcolz_data(table_name='cznls')
 
     @classlazyval
+    def growth_ratio_yearly(self):
+        """成长能力指标数据集(仅包含年度报告)"""
+        return from_bcolz_data('cznls', True)
+
+    @classlazyval
     def operation_ratio(self):
         """营运能力指标数据集"""
         return from_bcolz_data(table_name='yynls')
+
+    @classlazyval
+    def operation_ratio_yearly(self):
+        """营运能力指标数据集(仅包含年度报告)"""
+        return from_bcolz_data('yynls', True)
 
     @classlazyval
     def margin(self):
@@ -369,6 +415,7 @@ class Fundamentals(object):
     def dividend(self):
         """每股股利数据集"""
         return from_bcolz_data(table_name='adjustments')
+
     #========================单列========================#
 
     @classlazyval

@@ -1,4 +1,6 @@
 """
+TODO：待完成！需要确定算法
+
 运行该脚本必须满足：
     1. 完成sql数据库更新；
     2. 完成ingest；
@@ -20,6 +22,7 @@ from zipline.data.treasuries_cn import get_treasury_data
 from zipline.pipeline import CustomFactor, Pipeline
 from zipline.pipeline.data import USEquityPricing
 from zipline.pipeline.fundamentals import Fundamentals
+from zipline.pipeline.builtin import AnnualFinancalData
 from zipline.research import run_pipeline
 
 from cswd.common.utils import data_root
@@ -32,8 +35,8 @@ logger = logbook.Logger('构建ff因子')
 calendar = get_calendar('SZSH')
 
 all_trading_days = calendar.schedule.index
-all_trading_days = all_trading_days[all_trading_days <=
-                                    calendar.actual_last_session]
+all_trading_days = all_trading_days[
+    all_trading_days <= calendar.actual_last_session]
 
 # 每月交易天数（近似值20，不同于美国股市，A股每年交易天数大约为244天）
 normal_days = 31
@@ -109,12 +112,43 @@ def make_pipeline():
     book_equity = BookEquity()
     returns = Returns()
     be_me = book_equity / mkt_cap
+    # 去年营业利润
+    t_1_operating_profit = AnnualFinancalData(inputs=[
+        Fundamentals.profit_statement_yearly.A033,
+        Fundamentals.profit_statement_yearly.report_end_date
+    ])
+    # 前年所有者权益
+    t_2_equity = AnnualFinancalData(
+        inputs=[
+            Fundamentals.balance_sheet_yearly.A107,
+            Fundamentals.balance_sheet_yearly.report_end_date
+        ],
+        t_n=2,
+        window_lenght=500,
+    )
+    # 去年总资产
+    t_1_total_assets = AnnualFinancalData(
+        inputs=[
+            Fundamentals.balance_sheet_yearly.A052,
+            Fundamentals.balance_sheet_yearly.report_end_date
+        ], )
+    # 前年总资产
+    t_2_total_assets = AnnualFinancalData(
+        inputs=[
+            Fundamentals.balance_sheet_yearly.A052,
+            Fundamentals.balance_sheet_yearly.report_end_date
+        ],
+        t_n=2,
+        window_lenght=500,
+    )
     return Pipeline(
         columns={
             'market_cap': mkt_cap,
             'be_me': be_me,
             'returns': returns,
-            'prior_returns': PriorReturns()
+            'prior_returns': PriorReturns(),
+            'op': t_1_operating_profit / t_2_equity,
+            'inv': (t_1_total_assets - t_2_total_assets) / t_2_total_assets
         })
 
 
@@ -243,6 +277,7 @@ class FFFactor(object):
 def main():
     ff = FFFactor()
     ff.refresh()
-    
+
+
 if __name__ == '__main__':
     main()

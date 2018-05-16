@@ -301,7 +301,7 @@ setup(
         'console_scripts': [
             'zipline = zipline.__main__:main',
             'sql-to-bcolz = zipline.tasks.sql_to_bcolz:main',
-            'gen-ff-factors = zipline.tasks.ff:main',
+            'gen-ff-factors = zipline.tasks.ff3:main',
         ],
     },
     author='Quantopian Inc.',

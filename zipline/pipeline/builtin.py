@@ -72,6 +72,21 @@ def quarterly_multiplier(dates):
     return 4 / qs
 
 
+def _select_annual_indices(dates):
+    """选取最近第n年年末财务报告位置辅助函数"""
+    col_num = dates.shape[1]
+    locs = []
+    for col in range(col_num):
+        singal_dates = dates[:, col]
+        # 规范时间
+        singal_dates = pd.to_datetime(singal_dates).normalize()
+        # 有可能存在NaT，以最小日期填充
+        singal_dates = singal_dates.fillna(pd.Timestamp('1990-12-31'))
+        loc = changed_locations(singal_dates, True)
+        locs.append(loc)
+    return locs
+
+
 #============================自定义因子=============================#
 
 
@@ -212,7 +227,7 @@ def QTradableStocksUS():
 
     条件
     ----
-        1. 该股票在过去200天内必须有180天的有效收盘价(未实现)
+        1. 该股票在过去200天内必须有180天的有效收盘价
         2. 并且在最近20天的每一天都正常交易(非停牌状态)
         以上均使用成交量来判定，成交量为0，代表当天停牌
     """
@@ -375,27 +390,47 @@ class IsResumed(CustomFilter):
 
 
 #==============================财务相关=============================#
-# class AnnualData(CustomFactor):
-#     """
-#     最近第n年的年报科目数据
-#     """
-#     params = ('n',)
+class AnnualFinancalData(CustomFactor):
+    """
+    选取当前时间为t,t-n年的年度科目数据
 
-#     def _validate(self):
-#         super(AnnualData, self)._validate()
+    注意
+    ----
+        科目名称中必须含yearly，只对年报数据有效
+    python
+        inputs = [
+            Fundamentals.profit_statement_yearly.A033,
+            Fundamentals.profit_statement_yearly.report_end_date
+        ]
+    """
+    window_length = 245
+    params = {'t_n': 1}
+    window_safe = True
 
-#         if self.window_length < 260:
-#             raise ValueError('window_length值必须或等于260,以确保获取一年的财务数据')
+    def _validate(self):
+        super(AnnualFinancalData, self)._validate()
+        # 验证输入列
+        if len(self.inputs) != 2:
+            raise ValueError('inputs列表长度只能为2。第一列为要查询的科目，第2列为report_end_date')
+        last_col = self.inputs[-1]
+        if last_col.name != 'report_end_date':
+            raise ValueError('inputs列表最后一项必须为"report_end_date"')
+        # 验证窗口长度与t_n匹配
+        t_n = self.params.get('t_n')
+        win = self.window_length
+        at_least = t_n * 245
+        if win < at_least:
+            raise ValueError('window_length值至少应为t_n*245，即{}'.format(t_n * 245))
 
-#     def compute(self, today, assets, out, *values, n):
-#         # 计算期间季度数发生变化的位置，简化计算量
-#         # 选取最近四个季度的日期所对应的位置
-#         loc = changed_locations(asof_date[:, 0], include_first=True)[-4:]
-#         adj = quarterly_multiplier(asof_date[loc])
-#         # 将各季度调整为年销售额，然后再平均
-#         res = nanmean(np.multiply(sales[loc], adj), axis=0)
-#         # 收入单位为万元
-#         out[:] = res * 10000
+    def compute(self, today, assets, out, values, dates, t_n):
+        locs = _select_annual_indices(dates)
+        for col_loc, row_locs in enumerate(locs):
+            if len(row_locs) < t_n:
+                # 替代方案，防止中断
+                row_loc = row_locs[0]
+            else:
+                row_loc = row_locs[-t_n]
+            out[col_loc] = values[row_loc, col_loc]
 
 
 class TTMSale(CustomFactor):

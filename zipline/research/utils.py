@@ -44,4 +44,6 @@ def select_output_by(output, start=None, end=None, stock_codes=None):
         # 提取对象
         assets = output.index.get_level_values(1)
         locs = assets.map(lambda x:x.symbol in stock_codes)
-    return output[locs]
+        return output[locs]
+    else:
+        return output

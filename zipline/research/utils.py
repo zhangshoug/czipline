@@ -39,7 +39,7 @@ def select_output_by(output, start=None, end=None, stock_codes=None):
         output = output.loc[start:]
     if end:
         output = output.loc[:end]
-    if stock_codes:
+    if stock_codes is not None:
         stock_codes = ensure_list(stock_codes)
         # 提取对象
         assets = output.index.get_level_values(1)

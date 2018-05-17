@@ -256,8 +256,8 @@ def myfunc(context, data):
 **运行时长10-12秒**
 
 + 有关如何使用，请参考[quantopian使用手册](https://www.quantopian.com/help)。
-+ 有关本项目的说明，请参阅[介绍材料](https://github.com/liudengfeng/czipline/tree/master/docs/%E4%BB%8B%E7%BB%8D%E6%9D%90%E6%96%99)
-+ 有关后台自动数据处理，请参考[脚本](https://github.com/liudengfeng/czipline/blob/master/docs/%E4%BB%8B%E7%BB%8D%E6%9D%90%E6%96%99/bg_tasks.cron)
++ 有关本项目的说明，请参阅[介绍材料](./docs/介绍材料)
++ 有关后台自动数据处理，请参考[脚本](./docs/介绍材料/bg_tasks.cron)
 
 **特别说明**：个人当前使用Ubuntu17.10操作系统
 

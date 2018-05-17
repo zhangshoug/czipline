@@ -37,6 +37,7 @@ PATH=/home/ldf/anaconda3/envs/zipline/bin:/home/ldf/anaconda3/bin:/home/ldf/anac
 
 # 盘后刷新(日线、分时)，每天19点执行
 0 19 * * 1-5 refresh-trading-data >> ~/stockdata/logs/refresh_trading_data.log 2>&1
+0  1 * * 2-6 refresh-cjmx >> ~/stockdata/logs/refresh_cjmx.log 2>&1
 
 #================================每周任务=======================================#
 # 每周六上午7点删除临时文件

@@ -74,7 +74,7 @@ $ zipline ingest -b cndaily # 转换日线数据，耗时约10分钟
 
 $ sql-to-bcolz # `Fundamentals`数据，耗时约1.5分钟
 ```
-初始化数据后，参考[如何设置后台数据自动处理](https://github.com/liudengfeng/czipline/blob/master/docs/%E4%BB%8B%E7%BB%8D%E6%9D%90%E6%96%99/bg_zipline_tasks.cron)，设置后台计划任务。后台在盘后自动完成数据导入及转换。网络数据的采集可能因各种原失败，请注意查阅日志文档。文档默认路径为"～/stockdata/logs"。
+初始化数据后，参考[如何设置后台数据自动处理](./czipline/docs/介绍材料/bg_tasks.cron)，设置后台计划任务。后台在盘后自动完成数据导入及转换。网络数据的采集可能因各种原失败，请注意查阅日志文档。文档默认路径为"～/stockdata/logs"。
 
 #### 验证安装
 如能正常运行以下代码，证明已经安装成功。(注意，由于版本兼容问题，安装过程中会有大量警告信息，只要不是错误，可忽略)

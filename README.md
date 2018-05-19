@@ -70,9 +70,12 @@ $ python setup.py develop
 ```bash
 $ init-stock-data # 初始化基础数据。耗时大约4小时(主要下载日线及最近一个月的分时交易数据。对数据量小，但抓取网页数据耗时长的，整理好的数据存放在github，初始化时会从该处提取，节约初始化时间。)
 
-$ zipline ingest -b cndaily # 转换日线数据，耗时约10分钟
+$ zipline ingest # 转换日线数据，耗时约10分钟
 
 $ sql-to-bcolz # `Fundamentals`数据，耗时约1.5分钟
+
+# 如需要进行回测分析，请运行以下指令，生成ff因子数据(empyrical包使用)
+$ gen-ff-factors
 ```
 初始化数据后，参考[如何设置后台数据自动处理](./docs/介绍材料/bg_tasks.cron)，设置后台计划任务。后台在盘后自动完成数据导入及转换。网络数据的采集可能因各种原失败，请注意查阅日志文档。文档默认路径为"～/stockdata/logs"。
 

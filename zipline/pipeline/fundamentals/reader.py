@@ -46,11 +46,15 @@ def from_bcolz_data(table_name, yearly=False):
         missing_values=make_default_missing_values_for_expr(expr))
 
 
-def query_maps(table_name, attr_name):
+def query_maps(table_name, attr_name, key_to_int=False):
     """查询bcolz表中属性值"""
     rootdir = bcolz_table_path(table_name)
     ct = bcolz.open(rootdir)
-    return ct.attrs[attr_name]
+    d = ct.attrs[attr_name]
+    if key_to_int:
+        return {int(k):v for k,v in d.items()}
+    else:
+        return d
 
 
 class Fundamentals(object):
@@ -199,23 +203,23 @@ class Fundamentals(object):
     # 下列方法。数字自0开始，长度为len(类别)
     # 输入数字（如触发Keyerror，请减少数值再次尝试
 
-    supper_sector_maps = query_maps('infoes', 'super_sector_code')
+    supper_sector_maps = query_maps('infoes', 'super_sector_code', True)
 
     @staticmethod
     def supper_sector_cname(code):
         """超级部门编码含义"""
-        code = str(code)
+        code = int(code)
         table_name = 'infoes'
         attr_name = 'super_sector_code'
         maps = query_maps(table_name, attr_name)
         return maps[code]
 
-    sector_maps = query_maps('infoes', 'sector_code')
+    sector_maps = query_maps('infoes', 'sector_code', True)
 
     @staticmethod
     def sector_cname(code):
         """部门编码含义"""
-        code = str(code)
+        code = int(code)
         table_name = 'infoes'
         attr_name = 'sector_code'
         maps = query_maps(table_name, attr_name)

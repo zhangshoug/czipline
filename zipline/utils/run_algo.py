@@ -125,7 +125,7 @@ def _run(handle_data,
             click.echo(algotext)
 
     if trading_calendar is None:
-        trading_calendar = get_calendar('SHSZ')
+        trading_calendar = get_calendar('SZSH')
 
     if trading_calendar.session_distance(start, end) < 1:
         raise _RunAlgoError(
@@ -298,7 +298,8 @@ def run_algorithm(start,
                   default_extension=True,
                   extensions=(),
                   strict_extensions=True,
-                  environ=os.environ):
+                  environ=os.environ,
+                  bm_symbol='000300'):
     """Run a trading algorithm.
 
     Parameters
@@ -357,6 +358,8 @@ def run_algorithm(start,
     environ : mapping[str -> str], optional
         The os environment to use. Many extensions use this to get parameters.
         This defaults to ``os.environ``.
+    bm_symbol : str， 可选参数
+        基准收益率指数代码，默认000300(沪深300指数)
 
     Returns
     -------
@@ -409,4 +412,5 @@ def run_algorithm(start,
         metrics_set=metrics_set,
         local_namespace=False,
         environ=environ,
+        bm_symbol=bm_symbol,
     )

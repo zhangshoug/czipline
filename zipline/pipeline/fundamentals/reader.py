@@ -421,6 +421,10 @@ class Fundamentals(object):
         return from_bcolz_data(table_name='adjustments')
 
     #========================单列========================#
+    @classlazyval
+    def rating(self):
+        """股票评级（单列）"""
+        return from_bcolz_data(table_name='rating').rating
 
     @classlazyval
     def short_name(self):

@@ -78,7 +78,7 @@ def _factory(table_name):
     raise NotImplementedError(table_name)
 
 
-def _write_by_expr(expr, ndays=45):
+def _write_by_expr(expr, ndays=0):
     """
     以bcolz格式写入表达式数据
 

@@ -445,13 +445,13 @@ class TTMSale(CustomFactor):
         Fundamentals.profit_statement.A001,
         Fundamentals.profit_statement.asof_date
     ]
-    # 一年的交易日不会超过260天
-    window_length = 260
+    # 一年的交易日不会超过250天
+    window_length = 250
 
     def _validate(self):
         super(TTMSale, self)._validate()
-        if self.window_length < 260:
-            raise ValueError('window_length值必须或等于260,以确保获取一年的财务数据')
+        if self.window_length < 250:
+            raise ValueError('window_length值必须或等于250,以确保获取一年的财务数据')
 
     def compute(self, today, assets, out, sales, asof_date):
         # 计算期间季度数发生变化的位置，简化计算量

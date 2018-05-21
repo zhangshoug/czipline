@@ -10,6 +10,7 @@ from collections import Iterable
 from cswd.common.utils import sanitize_dates, data_root, ensure_list
 from zipline import run_algorithm
 from zipline.assets import Asset
+from zipline.assets._assets import Equity
 from zipline.pipeline import Pipeline
 from zipline.pipeline.engine import SimplePipelineEngine
 from zipline.pipeline.data import USEquityPricing
@@ -68,7 +69,19 @@ def symbols(symbols_, symbol_reference_date=None, handle_missing='log'):
     """
     finder = bundle_data.asset_finder
     symbols_ = ensure_list(symbols_)
-    symbols_ = [str(s).zfill(6) if isinstance(s, int) else s for s in symbols_]
+    first_type = type(symbols_[0])
+    for s in symbols_:
+        type_ = type(s)
+        if type_ != first_type:
+            raise TypeError('symbols_列表不得存在混合类型')
+    if first_type is Equity:
+        if len(symbols_) == 1:
+            return symbols_[0]
+        else:
+            return symbols_
+    elif first_type is int:
+        symbols_ = [str(s).zfill(6) for s in symbols_]
+            
     if symbol_reference_date is not None:
         asof_date = pd.Timestamp(symbol_reference_date, tz='UTC')
     else:

@@ -3,8 +3,10 @@
 """
 from cswd.common.utils import ensure_list
 
+from .core import symbols
 
-def select_output_by(output, start=None, end=None, stock_codes=None):
+
+def select_output_by(output, start=None, end=None, assets=None):
     """
     按时间及代码选择`pipeline`输出数据框
     
@@ -18,7 +20,7 @@ def select_output_by(output, start=None, end=None, stock_codes=None):
         开始时间
     end ： str
         结束时间    
-    stock_codes ： 可迭代对象或str
+    assets ： 可迭代对象或str
         股票代码
 
     案例
@@ -39,11 +41,8 @@ def select_output_by(output, start=None, end=None, stock_codes=None):
         output = output.loc[start:]
     if end:
         output = output.loc[:end]
-    if stock_codes is not None:
-        stock_codes = ensure_list(stock_codes)
-        # 提取对象
-        assets = output.index.get_level_values(1)
-        locs = assets.map(lambda x:x.symbol in stock_codes)
-        return output[locs]
+    if assets is not None:
+        assets = symbols(assets)
+        return output[assets]
     else:
         return output

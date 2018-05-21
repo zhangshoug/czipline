@@ -35,7 +35,7 @@ def choose_loader(column):
     raise ValueError("`PipelineLoader`没有注册列 %s." % column)
 
 
-def _dates(start, end):
+def to_dates(start, end):
     """修正交易日期"""
     calendar = bundle_data.equity_daily_bar_reader.trading_calendar
     dates = calendar.all_sessions
@@ -94,7 +94,7 @@ def symbols(symbols_, symbol_reference_date=None, handle_missing='log'):
 
 
 def run_pipeline(pipe, start, end):
-    dates, start_date, end_date = _dates(start, end)
+    dates, start_date, end_date = to_dates(start, end)
     finder = bundle_data.asset_finder
     df = SimplePipelineEngine(
         choose_loader,
@@ -151,7 +151,7 @@ def prices(assets,
     else:
         frequency = '1m'
         bundle = 'cnminutely'
-    dates, start_date, end_date = _dates(start, end)
+    dates, start_date, end_date = to_dates(start, end)
     if start_offset:
         start_date -= start_offset * dates.freq
     start_loc = dates.get_loc(start_date)

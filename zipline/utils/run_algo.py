@@ -20,7 +20,7 @@ from zipline.data import bundles
 from zipline.data.data_portal import DataPortal
 from zipline.finance import metrics
 from zipline.finance.trading import TradingEnvironment
-from zipline.pipeline.data import USEquityPricing # # USEquityPricing->USEquityPricing
+from zipline.pipeline.data import USEquityPricing
 from zipline.pipeline.loaders import USEquityPricingLoader
 from zipline.utils.calendars import get_calendar
 from zipline.utils.factory import create_simulation_parameters

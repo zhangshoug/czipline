@@ -333,9 +333,9 @@ class MetricsTracker(object):
         and send it out on the results socket.
         """
         log.info(
-            'Simulated {} trading days\n'
-            'first open: {}\n'
-            'last close: {}',
+            '模拟{}个交易日\n'
+            '首个开盘时间: {}\n'
+            '最后收盘时间: {}',
             self._session_count,
             self._trading_calendar.session_open(self._first_session),
             self._trading_calendar.session_close(self._last_session),

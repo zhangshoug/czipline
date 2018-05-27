@@ -1,3 +1,4 @@
+import warnings
 import re
 import bcolz
 import blaze
@@ -17,7 +18,7 @@ from .constants import MARKET_MAPS, SECTOR_NAMES, SUPER_SECTOR_NAMES, QUARTERLY_
 from .utils import (_normalized_dshape, make_default_missing_values_for_expr)
 
 ITEM_CODE_PATTERN = re.compile(r'A\d{3}')
-
+warnings.filterwarnings("ignore")
 
 def verify_code(code):
     if not re.match(ITEM_CODE_PATTERN, code):

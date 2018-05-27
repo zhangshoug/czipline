@@ -15,7 +15,7 @@ from zipline.pipeline import Pipeline
 from zipline.pipeline.engine import SimplePipelineEngine
 from zipline.pipeline.data import USEquityPricing
 from zipline.pipeline.loaders import USEquityPricingLoader
-from zipline.pipeline.fundamentals import Fundamentals
+from zipline.pipeline.fundamentals.reader import Fundamentals
 from zipline.data.bundles.core import load
 from zipline.pipeline.loaders.blaze import global_loader
 

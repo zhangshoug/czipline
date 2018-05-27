@@ -19,7 +19,7 @@ from zipline.data.benchmarks_cn import get_cn_benchmark_returns
 from zipline.data.treasuries_cn import get_treasury_data
 from zipline.pipeline import CustomFactor, Pipeline
 from zipline.pipeline.data import USEquityPricing
-from zipline.pipeline.fundamentals import Fundamentals
+from zipline.pipeline.fundamentals.reader import Fundamentals
 from zipline.research import run_pipeline
 
 from cswd.common.utils import data_root

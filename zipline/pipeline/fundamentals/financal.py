@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 from logbook import Logger
 from odo import odo
-from cswd.tasks.report_dates import BookReportDate
+from cswd.tasks.report_dates import BookReportDate, flush_report_dates
 from cswd.common.utils import data_root, ensure_list
 from cswd.sql.constants import (BALANCESHEET_ITEM_MAPS,
                                 CASHFLOWSTATEMENT_ITEM_MAPS, CHNL_ITEM_MAPS,
@@ -148,6 +148,8 @@ def write_financal_data_to_bcolz(tables=None):
     ------
         写入财务报告数据时，默认财务报告公告日期为报告期后45天
     """
+    # 首先要刷新数据
+    flush_report_dates()
     if not tables:
         to_does = QUARTERLY_TABLES
     else:

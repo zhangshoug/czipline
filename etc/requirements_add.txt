@@ -25,4 +25,5 @@ datashape>=0.5.2
 -e git+https://github.com/liudengfeng/alphalens#egg=alphalens
 
 
-
+# 投资组合优化包
+cvxpy==0.4.9

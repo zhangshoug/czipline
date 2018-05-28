@@ -212,7 +212,7 @@ class Fundamentals(object):
         code = int(code)
         table_name = 'infoes'
         attr_name = 'super_sector_code'
-        maps = query_maps(table_name, attr_name)
+        maps = query_maps(table_name, attr_name, True)
         return maps[code]
 
     sector_maps = query_maps('infoes', 'sector_code', True)
@@ -223,7 +223,7 @@ class Fundamentals(object):
         code = int(code)
         table_name = 'infoes'
         attr_name = 'sector_code'
-        maps = query_maps(table_name, attr_name)
+        maps = query_maps(table_name, attr_name, True)
         return maps[code]
 
     @staticmethod

@@ -245,9 +245,10 @@ def volumes(assets,
             end,
             frequency='daily',
             symbol_reference_date=None,
-            start_offset=0):
+            start_offset=0,
+            use_amount=False):
     """
-    获取资产期间成交量
+    获取资产期间成交量(或成交额)
 
     Parameters
     ----------
@@ -265,6 +266,9 @@ def volumes(assets,
         start_offset (int, optional)
             Number of periods before start to fetch. Default is 0. 
             This is most often useful for calculating returns.
+        use_amount：bool
+            是否使用成交额字段。默认为否。
+            如使用成交额，则读取期间成交额数据。
 
     Returns:	
 
@@ -275,5 +279,6 @@ def volumes(assets,
 
     Data is returned as a pd.DataFrame if multiple assets are passed.
     """
-    return _history(assets, start, end, frequency, 'volume',
+    field = 'amount' if use_amount else 'volume'
+    return _history(assets, start, end, frequency, field,
                     symbol_reference_date, start_offset)

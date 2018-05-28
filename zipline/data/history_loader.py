@@ -42,7 +42,6 @@ DEFAULT_ASSET_PRICE_DECIMALS = 3
 
 
 class HistoryCompatibleUSEquityAdjustmentReader(object):
-
     def __init__(self, adjustment_reader):
         self._adjustments_reader = adjustment_reader
 
@@ -58,8 +57,7 @@ class HistoryCompatibleUSEquityAdjustmentReader(object):
         for i, column in enumerate(columns):
             adjs = {}
             for asset in assets:
-                adjs.update(self._get_adjustments_in_range(
-                    asset, dts, column))
+                adjs.update(self._get_adjustments_in_range(asset, dts, column))
             out[i] = adjs
         return out
 
@@ -106,11 +104,7 @@ class HistoryCompatibleUSEquityAdjustmentReader(object):
                 if start < dt <= end:
                     end_loc = dts.searchsorted(dt)
                     adj_loc = end_loc
-                    mult = Float64Multiply(0,
-                                           end_loc - 1,
-                                           0,
-                                           0,
-                                           m[1])
+                    mult = Float64Multiply(0, end_loc - 1, 0, 0, m[1])
                     try:
                         adjs[adj_loc].append(mult)
                     except KeyError:
@@ -122,11 +116,7 @@ class HistoryCompatibleUSEquityAdjustmentReader(object):
                 if start < dt <= end:
                     end_loc = dts.searchsorted(dt)
                     adj_loc = end_loc
-                    mult = Float64Multiply(0,
-                                           end_loc - 1,
-                                           0,
-                                           0,
-                                           d[1])
+                    mult = Float64Multiply(0, end_loc - 1, 0, 0, d[1])
                     try:
                         adjs[adj_loc].append(mult)
                     except KeyError:
@@ -139,18 +129,14 @@ class HistoryCompatibleUSEquityAdjustmentReader(object):
                 if field == 'volume':
                     ratio = 1.0 / s[1]
                 # # else -> elif field in ('open', 'high', 'low', 'close')
-                elif field in ('open', 'high', 'low', 'close'): 
+                elif field in ('open', 'high', 'low', 'close'):
                     ratio = s[1]
                 # # 使用原值 1
                 else:
-                    ratio = 1                    
+                    ratio = 1
                 end_loc = dts.searchsorted(dt)
                 adj_loc = end_loc
-                mult = Float64Multiply(0,
-                                       end_loc - 1,
-                                       0,
-                                       0,
-                                       ratio)
+                mult = Float64Multiply(0, end_loc - 1, 0, 0, ratio)
                 try:
                     adjs[adj_loc].append(mult)
                 except KeyError:
@@ -164,12 +150,8 @@ class ContinuousFutureAdjustmentReader(object):
     close and open of the contracts on the either side of each roll.
     """
 
-    def __init__(self,
-                 trading_calendar,
-                 asset_finder,
-                 bar_reader,
-                 roll_finders,
-                 frequency):
+    def __init__(self, trading_calendar, asset_finder, bar_reader,
+                 roll_finders, frequency):
         self._trading_calendar = trading_calendar
         self._asset_finder = asset_finder
         self._bar_reader = bar_reader
@@ -188,15 +170,11 @@ class ContinuousFutureAdjustmentReader(object):
         for i, column in enumerate(columns):
             adjs = {}
             for asset in assets:
-                adjs.update(self._get_adjustments_in_range(
-                    asset, dts, column))
+                adjs.update(self._get_adjustments_in_range(asset, dts, column))
             out[i] = adjs
         return out
 
-    def _make_adjustment(self,
-                         adjustment_type,
-                         front_close,
-                         back_close,
+    def _make_adjustment(self, adjustment_type, front_close, back_close,
                          end_loc):
         adj_base = back_close - front_close
         if adjustment_type == 'mul':
@@ -205,11 +183,7 @@ class ContinuousFutureAdjustmentReader(object):
         elif adjustment_type == 'add':
             adj_value = adj_base
             adj_class = Float64Add
-        return adj_class(0,
-                         end_loc,
-                         0,
-                         0,
-                         adj_value)
+        return adj_class(0, end_loc, 0, 0, adj_value)
 
     def _get_adjustments_in_range(self, cf, dts, field):
         if field == 'volume' or field == 'sid':
@@ -219,8 +193,7 @@ class ContinuousFutureAdjustmentReader(object):
         rf = self._roll_finders[cf.roll_style]
         partitions = []
 
-        rolls = rf.get_rolls(cf.root_symbol, dts[0], dts[-1],
-                             cf.offset)
+        rolls = rf.get_rolls(cf.root_symbol, dts[0], dts[-1], cf.offset)
 
         tc = self._trading_calendar
 
@@ -233,10 +206,7 @@ class ContinuousFutureAdjustmentReader(object):
             if self._frequency == 'minute':
                 dt = tc.open_and_close_for_session(dt)[1]
                 roll_dt = tc.open_and_close_for_session(roll_dt)[0]
-            partitions.append((front_sid,
-                               back_sid,
-                               dt,
-                               roll_dt))
+            partitions.append((front_sid, back_sid, dt, roll_dt))
         for partition in partitions:
             front_sid, back_sid, dt, roll_dt = partition
             last_front_dt = self._bar_reader.get_last_traded_dt(
@@ -245,15 +215,13 @@ class ContinuousFutureAdjustmentReader(object):
                 self._asset_finder.retrieve_asset(back_sid), dt)
             if isnull(last_front_dt) or isnull(last_back_dt):
                 continue
-            front_close = self._bar_reader.get_value(
-                front_sid, last_front_dt, 'close')
-            back_close = self._bar_reader.get_value(
-                back_sid, last_back_dt, 'close')
+            front_close = self._bar_reader.get_value(front_sid, last_front_dt,
+                                                     'close')
+            back_close = self._bar_reader.get_value(back_sid, last_back_dt,
+                                                    'close')
             adj_loc = dts.searchsorted(roll_dt)
             end_loc = adj_loc - 1
-            adj = self._make_adjustment(cf.adjustment,
-                                        front_close,
-                                        back_close,
+            adj = self._make_adjustment(cf.adjustment, front_close, back_close,
                                         end_loc)
             try:
                 adjs[adj_loc].append(adj)
@@ -313,9 +281,15 @@ class HistoryLoader(with_metaclass(ABCMeta)):
     adjustment_reader : SQLiteAdjustmentReader
         Reader for adjustment data.
     """
-    FIELDS = ('open', 'high', 'low', 'close', 'volume', 'sid')
+    # FIELDS = ('open', 'high', 'low', 'close', 'volume', 'sid')
+    # # 增加附加列
+    FIELDS = ('open', 'high', 'low', 'close', 'volume', 'sid', 'amount',
+              'turnover', 'cmv', 'tmv', 'prev_close')
 
-    def __init__(self, trading_calendar, reader, equity_adjustment_reader,
+    def __init__(self,
+                 trading_calendar,
+                 reader,
+                 equity_adjustment_reader,
                  asset_finder,
                  roll_finders=None,
                  sid_cache_size=1000,
@@ -453,8 +427,8 @@ class HistoryLoader(with_metaclass(ABCMeta)):
                 except KeyError:
                     adj_reader = None
                 if adj_reader is not None:
-                    adjs = adj_reader.load_adjustments(
-                        [field], adj_dts, [asset])[0]
+                    adjs = adj_reader.load_adjustments([field], adj_dts,
+                                                       [asset])[0]
                 else:
                     adjs = {}
                 window = window_type(
@@ -469,8 +443,7 @@ class HistoryLoader(with_metaclass(ABCMeta)):
                 sliding_window = SlidingWindow(window, size, start_ix, offset)
                 asset_windows[asset] = sliding_window
                 self._window_blocks[field].set(
-                    (asset, size, is_perspective_after),
-                    sliding_window,
+                    (asset, size, is_perspective_after), sliding_window,
                     prefetch_end)
 
         return [asset_windows[asset] for asset in assets]
@@ -550,9 +523,7 @@ class HistoryLoader(with_metaclass(ABCMeta)):
         -------
         out : np.ndarray with shape(len(days between start, end), len(assets))
         """
-        block = self._ensure_sliding_windows(assets,
-                                             dts,
-                                             field,
+        block = self._ensure_sliding_windows(assets, dts, field,
                                              is_perspective_after)
         end_ix = self._calendar.searchsorted(dts[-1])
 
@@ -563,7 +534,6 @@ class HistoryLoader(with_metaclass(ABCMeta)):
 
 
 class DailyHistoryLoader(HistoryLoader):
-
     @property
     def _frequency(self):
         return 'daily'
@@ -582,7 +552,6 @@ class DailyHistoryLoader(HistoryLoader):
 
 
 class MinuteHistoryLoader(HistoryLoader):
-
     @property
     def _frequency(self):
         return 'minute'

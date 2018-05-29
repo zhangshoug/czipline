@@ -7,7 +7,6 @@ import collections
 import numpy as np
 import pandas as pd
 import copy
-from .policies import MultiPeriodOpt
 
 
 def getFiscalQuarter(dt):
@@ -27,8 +26,14 @@ class SimulationResult():
         tcosts: A series of transaction costs over time.
         borrow_costs: A series of borrow costs over time.
     """
-    def __init__(self, initial_portfolio, policy, cash_key, simulator,
-                 simulation_times=None, PPY=244,
+
+    def __init__(self,
+                 initial_portfolio,
+                 policy,
+                 cash_key,
+                 simulator,
+                 simulation_times=None,
+                 PPY=244,
                  timedelta=pd.Timedelta("1 days")):
         """
         Initialize the result object.
@@ -54,47 +59,46 @@ class SimulationResult():
     def _summary_string(self):
         data = collections.OrderedDict({
             'Number of periods':
-                self.u.shape[0],
+            self.u.shape[0],
             'Initial timestamp':
-                self.h.index[0],
+            self.h.index[0],
             'Final timestamp':
-                self.h.index[-1],
+            self.h.index[-1],
             'Portfolio return (%)':
-                self.returns.mean() * 100 * self.PPY,
+            self.returns.mean() * 100 * self.PPY,
             'Excess return (%)':
-                self.excess_returns.mean() * 100 * self.PPY,
+            self.excess_returns.mean() * 100 * self.PPY,
             'Excess risk (%)':
-                self.excess_returns.std() * 100 * np.sqrt(self.PPY),
+            self.excess_returns.std() * 100 * np.sqrt(self.PPY),
             'Sharpe ratio':
-                self.sharpe_ratio,
+            self.sharpe_ratio,
             'Max. drawdown':
-                self.max_drawdown,
+            self.max_drawdown,
             'Turnover (%)':
-                self.turnover.mean() * 100 * self.PPY,
+            self.turnover.mean() * 100 * self.PPY,
             'Average policy time (sec)':
-                self.policy_time.mean(),
+            self.policy_time.mean(),
             'Average simulator time (sec)':
-                self.simulation_time.mean(),
+            self.simulation_time.mean(),
         })
 
-        return (pd.Series(data=data).
-                to_string(float_format='{:,.3f}'.format))
+        return (pd.Series(data=data).to_string(float_format='{:,.3f}'.format))
 
     def log_data(self, name, t, entry):
         try:
             getattr(self, name).loc[t] = entry
         except AttributeError:
-            setattr(self, name,
-                    (pd.Series if np.isscalar(entry) else
-                     pd.DataFrame)(index=[t], data=[entry]))
+            setattr(self, name, (pd.Series
+                                 if np.isscalar(entry) else pd.DataFrame)(
+                                     index=[t], data=[entry]))
 
     def log_policy(self, t, exec_time):
         self.log_data("policy_time", t, exec_time)
         # TODO mpo policy requires changes in the optimization_log methods
         if not isinstance(self.policy, MultiPeriodOpt):
             for cost in self.policy.costs:
-                self.log_data("policy_" + cost.__class__.__name__,
-                              t, cost.optimization_log(t))
+                self.log_data("policy_" + cost.__class__.__name__, t,
+                              cost.optimization_log(t))
 
     def log_simulation(self, t, u, h_next, risk_free_return, exec_time):
         self.log_data("simulation_time", t, exec_time)
@@ -102,8 +106,8 @@ class SimulationResult():
         self.log_data("h_next", t, h_next)
         self.log_data("risk_free_returns", t, risk_free_return)
         for cost in self.simulator.costs:
-            self.log_data("simulator_" + cost.__class__.__name__,
-                          t, cost.simulation_log(t))
+            self.log_data("simulator_" + cost.__class__.__name__, t,
+                          cost.simulation_log(t))
 
     @property
     def h(self):
@@ -116,13 +120,13 @@ class SimulationResult():
         tmp.iloc[0] = self.initial_portfolio
         # TODO fix
         # tmp.loc[self.h_next.index[-1] + self.timedelta]=self.h_next.iloc[-1]
-        return tmp
+        return np.round(tmp, 2)
 
     @property
     def v(self):
         """The value of the portfolio over time.
         """
-        return self.h.sum(axis=1)
+        return np.round(self.h.sum(axis=1), 2)
 
     @property
     def profit(self):
@@ -132,7 +136,7 @@ class SimulationResult():
     @property
     def w(self):
         """The weights of the portfolio over time."""
-        return (self.h.T / self.v).T
+        return np.round((self.h.T / self.v).T, 4)
 
     @property
     def leverage(self):
@@ -154,8 +158,8 @@ class SimulationResult():
         """The returns R_t = (v_{t+1}-v_t)/v_t
         """
         val = self.v
-        return pd.Series(data=val.values[1:] / val.values[:-1] - 1,
-                         index=val.index[:-1])
+        return pd.Series(
+            data=val.values[1:] / val.values[:-1] - 1, index=val.index[:-1])
 
     @property
     def growth_rates(self):
@@ -230,3 +234,120 @@ class SimulationResult():
             elif 100 * (cur_max - val) / cur_max > max_dd_so_far:
                 max_dd_so_far = 100 * (cur_max - val) / cur_max
         return max_dd_so_far
+
+
+class InfeasibleConstraints(Exception):
+    """
+
+    Raised when an optimization fails because there are no valid portfolios.
+
+    This most commonly happens when the weight in some asset is simultaneously 
+    constrained to be above and below some threshold.
+    """
+    pass
+
+
+class UnboundedObjective(Exception):
+    """
+
+    Raised when an optimization fails because at least one weight in the ‘optimal’ 
+    portfolio is ‘infinity’.
+
+    More formally, raised when an optimization fails because the value of an 
+    objective function improves as a value being optimized grows toward infinity, 
+    and no constraint puts a bound on the magnitude of that value.
+    """
+    pass
+
+
+class OptimizationFailed(Exception):
+    """
+    Generic exception raised when an optimization fails a reason with no special 
+    metadata.
+    """
+    pass
+
+
+class OptimizationResult():
+    def __init__(self, simulation_result):
+        self._result = simulation_result
+
+    def raise_for_status(self):
+        """
+        Raise an error if the optimization did not succeed.
+        """
+        if self.prob.status != 'optimal':
+            raise NotImplementedError('未成功优化')
+
+    def print_diagnostics(self):
+        """
+        Print diagnostic information gathered during the optimization.
+        """
+        if not self.success:
+            print('求解失败')
+            return
+        prob = self.prob
+        objective = type(prob.objective)
+        status = '成功' if prob.status == 'optimal' else '失败'
+        num_iters = prob.solver_stats.num_iters
+        setup_time = round(prob.solver_stats.setup_time, 6)
+        solve_time = round(prob.solver_stats.solve_time, 6)
+        solver_name = prob.solver_stats.solver_name
+        msg_fmt = """
+    目标：{}
+    状态：{}
+    最优解：{}
+    迭代次数:{}
+    启动时间：{}秒\t求解时间：{}秒
+    求解器:{}
+        """
+        print(
+            msg_fmt.format(objective, status, round(prob.value, 6), num_iters,
+                           setup_time, solve_time, solver_name))
+
+    @property
+    def old_weights(self):
+        """
+        pandas.Series
+        Portfolio weights before the optimization.
+        """
+        w = self._result.initial_portfolio[:-1]
+        return w / sum(w)
+
+    @property
+    def new_weights(self):
+        """
+        pandas.Series or None
+
+        New optimal weights, or None if the optimization failed.
+
+        """
+        w = self._result.w.iloc[-1,:-1]
+        return w / sum(w)
+
+    @property
+    def diagnostics(self):
+        """
+        quantopian.optimize.Diagnostics
+
+        Object containing diagnostic information about violated
+        (or potentially violated) constraints.
+        """
+        pass
+
+    def status(self):
+        """
+        str
+
+        String indicating the status of the optimization.
+        
+        """
+        return self.prob.status
+
+    def success(self):
+        """
+        class:bool
+
+        True if the optimization successfully produced a result.
+        """
+        return self.prob.status == 'optimal'

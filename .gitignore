@@ -85,3 +85,5 @@ README.ipynb
 
 .vs
 src/*.*
+
+zipline/_optimize/*.*

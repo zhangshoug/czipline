@@ -1,7 +1,11 @@
 import cvxpy as cvx
-from .utils import (OptimizationResult, InfeasibleConstraints,
-                    UnboundedObjective, OptimizationFailed)
+import logbook
+import pandas as pd
+import time
+from .result import (OptimizationResult, InfeasibleConstraints,
+                     UnboundedObjective, OptimizationFailed)
 
+logger = logbook.Logger('投资组合优化')
 
 def order_optimal_portfolio(objective, constraints):
     """
@@ -87,6 +91,9 @@ def calculate_optimal_portfolio(objective, constraints,
     elif status == 'infeasible':
         raise InfeasibleConstraints('限制不可行')
 
+def _run(dt):
+    pass
+
 def run_optimization(objective, constraints, current_portfolio=None):
     """
     运行投资组合优化
@@ -113,13 +120,14 @@ def run_optimization(objective, constraints, current_portfolio=None):
     zipline.optimize.calculate_optimal_portfolio()   
     """
     assert isinstance(constraints, list), 'constraints应该为列表类型'
-    # 传入伪目标对象
-    obj = objective.objective
-    w = objective.w
-    # 传入伪限制对象
-    cons = []
-    for con in constraints:
-        cons.extend(con.make_constraints(w))
-    prob = cvx.Problem(obj, cons)
-    prob.solve()
-    return OptimizationResult(prob, w, current_portfolio)
+    h = current_portfolio
+    try:
+        u = objective.get_trades(h)
+    except cvx.SolverError:
+        logger.warning('求解失败，默认无交易')
+        if h is None:
+            h = objective.target
+        # TODO：输入空组合时的处理u
+        u = pd.Series(index=h.index, data=0.)
+    print(u)
+

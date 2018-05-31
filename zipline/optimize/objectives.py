@@ -3,43 +3,80 @@
 """
 from abc import ABCMeta, abstractmethod
 
-import cvxpy as cvx
 import logbook
 import numpy as np
 import pandas as pd
 
+import cvxpy as cvx
+
 from .utils import check_series_or_dict
-from .utils.data_management import null_checker, time_locator
+
+__all__ = ['TargetWeights', 'MaximizeAlpha']
 
 
 class ObjectiveBase(object):
-    """ Base class for a trading policy. """
+    """目标基类"""
     __metaclass__ = ABCMeta
 
-    def __init__(self):
-        self.constraints = []
+    cash_key = 'cash'
 
     @abstractmethod
-    def objective(self, portfolio):
-        """
-        给定当前投资组合及时间t的交易列表
-        Trades list given current portfolio and time t.
-        """
+    def _expr(self):
+        """目标"""
         return NotImplemented
 
+    def make_weight(self, n, assets):
+        """构造多、空权重双变量"""
+        self.n = len(assets)
+        # 多头权重(数字非负)
+        self.long_w = cvx.Variable(n, nonneg=True)
+        # 空头权重(数字非正)
+        self.short_w = cvx.Variable(n, nonpos=True)
+        # 绝对值权重
+        self.w = self.long_w - self.short_w
+        # 资产索引(用于调整限定条件多空权重变量参数位置)
+        self.assets = assets
 
-class BaseRebalance(ObjectiveBase):
-    def _rebalance(self, portfolio):
-        return sum(portfolio) * self.target - portfolio
+    @property
+    def weights_series(self):
+        """绝对值权重表达式序列"""
+        return pd.Series([self.w[i] for i in range(self.n)], index=self.assets)
+
+    @property
+    def weights_value(self):
+        """绝对值权重值"""
+        return self.weights_series.map(lambda x: round(x.value, 4))
+
+    @property
+    def long_weights_series(self):
+        """多头权重表达式序列"""
+        return pd.Series(
+            [self.long_w[i] for i in range(self.n)], index=self.assets)
+
+    @property
+    def long_weights_value(self):
+        """多头权重值"""
+        return self.long_weights_series.map(lambda x: round(x.value, 4))
+
+    @property
+    def short_weights_series(self):
+        """空头权重表达式序列"""
+        return pd.Series(
+            [self.short_w[i] for i in range(self.n)], index=self.assets)
+
+    @property
+    def short_weights_value(self):
+        """空头权重值"""
+        return self.short_weights_series.map(lambda x: round(x.value, 4))
 
 
-class TargetWeights(BaseRebalance):
+class TargetWeights(ObjectiveBase):
     """
     与投资组合目标权重最小距离的ObjectiveBase
 
     Parameters
     ----------
-    target：pd.Series[Asset -> float] or dict[Asset -> float]
+    weights：pd.Series[Asset -> float] or dict[Asset -> float]
         资产目标权重(或资产目标权重映射)
 
     Notes
@@ -53,24 +90,28 @@ class TargetWeights(BaseRebalance):
     如果算法在资产中已有头寸，且没有提供目标权重，那么目标权重被假设为0.
     """
 
-    def __init__(self, target):
-        check_series_or_dict(target, 'target')
-        self.target = pd.Series(target)
-        self.tracking_error = 1e-4
+    def __init__(self, weights):
+        check_series_or_dict(weights, 'weights')
+        self.weights = pd.Series(weights)
+        n = len(weights)
+        # TODO:暂时没有考虑cash
+        self.make_weight(n, self.weights.index)
         super(TargetWeights, self).__init__()
 
+    def _expr(self):
+        # 目标权重
+        t_w = self.weights.values
+        # 必须完全复制值
+        l_w, s_w = np.array(t_w), np.array(t_w)
+        l_w[t_w <= 0] = 0.
+        s_w[t_w >= 0] = 0.
+        long_err = cvx.sum_squares(self.long_w - l_w)
+        short_err = cvx.sum_squares(self.short_w - s_w)
+        return long_err + short_err
 
-    def objective(self, portfolio):
-        if portfolio is None:
-            # 此时返回的是权重 TODO：注意一致性，应返回要成交的金额
-            return self.target
-        weights = portfolio / sum(portfolio)
-        diff = (weights - self.target).values
-
-        if np.linalg.norm(diff, 2) > self.tracking_error:
-            return [self._rebalance(portfolio)]
-        else:
-            return [self._nulltrade(portfolio)]
+    @property
+    def objective(self):
+        return cvx.Minimize(self._expr())
 
 
 class MaximizeAlpha(ObjectiveBase):
@@ -100,11 +141,19 @@ class MaximizeAlpha(ObjectiveBase):
 
     def __init__(self, alphas):
         check_series_or_dict(alphas, 'alphas')
-        alphas = pd.Series(alphas)
+        self.alphas = pd.Series(alphas)
         n = len(alphas)
-        w = cvx.Variable(shape=(n, 1))
+        # TODO:暂时没有考虑cash
+        self.make_weight(n, self.alphas.index)
+        super(MaximizeAlpha, self).__init__()
 
-        # 更新属性
-        self._w = w
-        self._asset_map = {n: i for i, n in enumerate(alphas.index)}
-        self._ObjectiveBase = cvx.Maximize(w.T * alphas)
+    def _expr(self):
+        alphas = self.alphas.values
+        # # 必须完全复制值
+        long_profit = alphas.T * self.long_w  # 多头加权收益
+        short_profit = alphas.T * self.short_w  # 空头加权收益
+        return long_profit + short_profit
+
+    @property
+    def objective(self):
+        return cvx.Maximize(self._expr())

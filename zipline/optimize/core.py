@@ -7,6 +7,12 @@ from .result import (OptimizationResult, InfeasibleConstraints,
 
 logger = logbook.Logger('投资组合优化')
 
+__all__ = [
+    'order_optimal_portfolio',
+    'calculate_optimal_portfolio',
+    'run_optimization'
+]
+
 def order_optimal_portfolio(objective, constraints):
     """
     计算优化投资组合，并放置实现该组合所必需的订单
@@ -91,7 +97,31 @@ def calculate_optimal_portfolio(objective, constraints,
     elif status == 'infeasible':
         raise InfeasibleConstraints('限制不可行')
 
-def _run(dt):
+def _check_index(objective, constraint):
+    """
+    检查目标与单个限定条件对象索引
+
+    只有限定条件对象属性：assets索引对象非空才比较
+
+    要求目标资产索引对象要全部包含限定对象索引
+
+    目的在于防止变量位置与限定输入参数位置不一致，导致优化结果异常
+    """
+    pass
+
+def _check_constraints(constraints):
+    """检查限定条件"""
+    pass
+
+def _make_constraints(constraints):
+    """生成限定表达式列表"""
+    pass
+
+def _check_problem():
+    """检查问题状态"""
+    pass
+
+def _run(objective, constraints, current_portfolio):
     pass
 
 def run_optimization(objective, constraints, current_portfolio=None):
@@ -119,6 +149,7 @@ def run_optimization(objective, constraints, current_portfolio=None):
     zipline.optimize.OptimizationResult
     zipline.optimize.calculate_optimal_portfolio()   
     """
+    # TODO：检查current_portfolio与目标所含assets一致性
     assert isinstance(constraints, list), 'constraints应该为列表类型'
     h = current_portfolio
     try:

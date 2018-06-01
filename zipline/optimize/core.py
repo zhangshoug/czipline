@@ -180,6 +180,7 @@ def calculate_optimal_portfolio(objective, constraints,
         raise OptimizationFailed('求解失败')
     return result.new_weights
 
+
 def order_optimal_portfolio(objective, constraints):
     """
     计算优化投资组合，并放置实现该组合所必需的订单

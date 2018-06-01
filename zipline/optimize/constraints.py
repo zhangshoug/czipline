@@ -551,7 +551,6 @@ class Pair(BaseConstraint):
         The asset to short.
     hedge_ratio (float, optional)
         多头与空头权重绝对值比率。 要求大于0.默认值为1.0，表示权重相等。
-        TODO：寻找修正方法？暂时更改为多头与空头权重，允许误差率
     tolerance (float, optional)
         允许计算权重的套期保值比率与给定套期保值比率在任一方向上不同。要求大于或等于0.默认值为0.0。
     """
@@ -564,22 +563,10 @@ class Pair(BaseConstraint):
         self.constraint_assets = pd.Index([self.long_, self.short_])
         super(Pair, self).__init__()
 
-    # def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-    #                       init_w_s):
-    #     # 单个资产
-    #     long_expr = w_long_s.loc[self.long_]  # 标量
-    #     short_expr = w_short_s.loc[self.short_]  # 标量
-    #     # TODO:不允许二者直接相除前提下，如何表达双变量之间的倍数关系？
-    #     return [
-    #         long_expr == self.hedge_ratio,
-    #         short_expr == -self.hedge_ratio,
-    #         # cvx.abs(short_expr - long_expr) <= self.tolerance
-    #     ]
-
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
         """
-        参考作者方法再次尝试
+        参考原作者方法
         https://github.com/cvxgrp/cvxpy/issues/322
         """
         universe = init_w_s.index

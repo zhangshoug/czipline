@@ -12,11 +12,25 @@ import cvxpy as cvx
 from .utils import check_series_or_dict
 
 __all__ = [
+    'NotConstrained',
     'MaxGrossExposure',
     'NetExposure',
     'DollarNeutral',
     'NetGroupExposure',
-    'NotConstrained',
+    'DollarNeutral',
+    'NetGroupExposure',
+    'PositionConcentration',
+    'FactorExposure',
+    'Pair',
+    'Basket',
+    'Frozen',
+    'ReduceOnly',
+    'LongOnly',
+    'ShortOnly',
+    'FixedWeight',
+    'CannotHold',
+    'NotExceed',
+    'NotLessThan',
 ]
 
 NotConstrained = 'NotConstrained'
@@ -24,6 +38,9 @@ NotConstrained = 'NotConstrained'
 
 class BaseConstraint(object):
     __metaclass__ = ABCMeta
+
+    def __init__(self):
+        self.constraint_assets = None
 
     def gen_constraints(self,
                         vars_long,
@@ -215,6 +232,8 @@ class NetGroupExposure(BaseConstraint):
         self.min_weights = min_weights
         self.max_weights = max_weights
         self.etf_lookthru = etf_lookthru
+        # 重写基类的constraint_assets属性
+        self.constraint_assets = labels.index
         super(NetGroupExposure, self).__init__()
 
     @classmethod
@@ -416,6 +435,10 @@ class PositionConcentration(BaseConstraint):
         self.default_min_weight = default_min_weight
         self.default_max_weight = default_max_weight
         self.etf_lookthru = etf_lookthru
+
+        # 重写基类的constraint_assets属性
+        assets = min_weights.index.union(max_weights.index).unique()
+        self.constraint_assets = assets
         super(PositionConcentration, self).__init__()
 
     @classmethod
@@ -497,6 +520,9 @@ class FactorExposure(BaseConstraint):
         self.loadings = loadings
         self.min_exposures = pd.Series(min_exposures)
         self.max_exposures = pd.Series(max_exposures)
+
+        # 重写基类的constraint_assets属性
+        self.constraint_assets = loadings.index
         super(FactorExposure, self).__init__()
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
@@ -533,20 +559,59 @@ class Pair(BaseConstraint):
     def __init__(self, long_, short_, hedge_ratio=1.0, tolerance=0.0):
         self.long_ = long_
         self.short_ = short_
-        self.hedge_ratio = hedge_ratio
-        self.tolerance = tolerance
+        self.hedge_ratio = abs(hedge_ratio)
+        self.tolerance = abs(tolerance)
+        self.constraint_assets = pd.Index([self.long_, self.short_])
         super(Pair, self).__init__()
+
+    # def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
+    #                       init_w_s):
+    #     # 单个资产
+    #     long_expr = w_long_s.loc[self.long_]  # 标量
+    #     short_expr = w_short_s.loc[self.short_]  # 标量
+    #     # TODO:不允许二者直接相除前提下，如何表达双变量之间的倍数关系？
+    #     return [
+    #         long_expr == self.hedge_ratio,
+    #         short_expr == -self.hedge_ratio,
+    #         # cvx.abs(short_expr - long_expr) <= self.tolerance
+    #     ]
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
-        # 单个资产
-        long_expr = w_long_s.loc[self.long_]  # 标量
-        short_expr = w_short_s.loc[self.short_]  # 标量
-        # TODO:不允许二者直接相除前提下，如何表达双变量之间的倍数关系？
+        """
+        参考作者方法再次尝试
+        https://github.com/cvxgrp/cvxpy/issues/322
+        """
+        universe = init_w_s.index
+        long_ix, short_ix = universe.get_indexer([self.long_, self.short_])
+
+        # 对应变量
+        long_weight = vars_long[long_ix]
+        short_weight = vars_short[short_ix]
+
+        # The hedge ratio constraint is better understood logically as
+        #       hedge_ratio = long_weight / -short_weight,
+        #
+        # to ensure that hedge_ratio is positive, but rearranged as
+        #       hedge_ratio * -short_weight = long_weight,
+        #
+        # so that we cannot divide by 0. Then we add tolerance to make the
+        # upper and lower bound constraints
+
+        max_hedge_ratio = self.hedge_ratio + self.tolerance
+        min_hedge_ratio = self.hedge_ratio - self.tolerance
+
+        upper_bound_hedge_ratio_constraint = \
+            (long_weight <= -short_weight * max_hedge_ratio)
+
+        lower_bound_hedge_ratio_constraint = \
+            (long_weight >= -short_weight * min_hedge_ratio)
+
         return [
-            long_expr == self.hedge_ratio,
-            short_expr == -self.hedge_ratio,
-            # cvx.abs(short_expr - long_expr) <= self.tolerance
+            long_weight >= 0.0,
+            short_weight <= 0.0,
+            upper_bound_hedge_ratio_constraint,
+            lower_bound_hedge_ratio_constraint,
         ]
 
 
@@ -569,6 +634,7 @@ class Basket(BaseConstraint):
         self.assets = assets
         self.min_net_exposure = min_net_exposure
         self.max_net_exposure = max_net_exposure
+        self.constraint_assets = pd.Index(self.assets)
         super(Basket, self).__init__()
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
@@ -601,10 +667,12 @@ class Frozen(BaseConstraint):
     def __init__(self, asset_or_assets, max_error_display=10):
         self.asset_or_assets = asset_or_assets
         self.max_error_display = max_error_display
+        self.constraint_assets = pd.Index(self.asset_or_assets)
         super(Frozen, self).__init__()
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
+        assert init_w_s is not None, '固定权重(Frozen)限制期初投资组合不得为空'
         long_cons, short_cons = [], []
         init_w = init_w_s.loc[self.asset_or_assets]
         long_w = init_w[init_w >= 0]
@@ -635,6 +703,7 @@ class ReduceOnly(BaseConstraint):
     def __init__(self, asset_or_assets, max_error_display=10):
         self.asset_or_assets = asset_or_assets
         self.max_error_display = max_error_display
+        self.constraint_assets = pd.Index(self.asset_or_assets)
         super(ReduceOnly, self).__init__()
 
     # 分别控制多空权重
@@ -659,6 +728,7 @@ class ReduceOnly(BaseConstraint):
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
+        assert init_w_s is not None, '仅能减少权重限制(ReduceOnly)限制期初投资组合不得为空'
         bias = 0.01  # 由于求解器不接受严格不等式，使用偏差微调
         # 以绝对值来控制
         init_abs_w = init_w_s.loc[self.asset_or_assets].abs().values
@@ -685,6 +755,7 @@ class LongOnly(BaseConstraint):
     def __init__(self, asset_or_assets, max_error_display=10):
         self.asset_or_assets = asset_or_assets
         self.max_error_display = max_error_display
+        self.constraint_assets = pd.Index(self.asset_or_assets)
         super(LongOnly, self).__init__()
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
@@ -706,6 +777,7 @@ class ShortOnly(BaseConstraint):
     def __init__(self, asset_or_assets, max_error_display=10):
         self.asset_or_assets = asset_or_assets
         self.max_error_display = max_error_display
+        self.constraint_assets = pd.Index(asset_or_assets)
         super(ShortOnly, self).__init__()
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
@@ -730,6 +802,7 @@ class FixedWeight(BaseConstraint):
     def __init__(self, asset, weight):
         self.asset = asset
         self.weight = weight
+        self.constraint_assets = pd.Index(asset)
         super(FixedWeight, self).__init__()
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
@@ -754,6 +827,7 @@ class CannotHold(BaseConstraint):
     def __init__(self, asset_or_assets, max_error_display=10):
         self.asset_or_assets = asset_or_assets
         self.max_error_display = max_error_display
+        self.constraint_assets = pd.Index(asset_or_assets)
         super(CannotHold, self).__init__()
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
@@ -762,3 +836,45 @@ class CannotHold(BaseConstraint):
         p1 = w_long_s.loc[self.asset_or_assets].tolist()
         p2 = w_short_s.loc[self.asset_or_assets].tolist()
         return [con == 0 for con in p1 + p2]
+
+
+class NotExceed(BaseConstraint):
+    """
+    无论多头或空头所有单个资产的权重不得超过一个常数
+    权重介于 [-limit, limit]
+    Parameters
+    ----------
+    limit：float 正数(负数将转换为绝对值)
+        资产绝对值权重不得超过此值
+    """
+
+    def __init__(self, limit):
+        limit = abs(limit)
+        self.limit = limit
+        super(NotExceed, self).__init__()
+
+    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
+                          init_w_s):
+        return [vars_long <= self.limit, vars_short >= -self.limit]
+
+
+class NotLessThan(BaseConstraint):
+    """
+    无论多头或空头所有单个资产的权重不得低于一个常数
+    空头权重 [-∞,-limit]
+    多头权重 [limit, ∞]
+
+    Parameters
+    ----------
+    limit：float 正数(负数将转换为绝对值)
+        资产绝对值权重不得低于此值
+    """
+
+    def __init__(self, limit):
+        limit = abs(limit)
+        self.limit = limit
+        super(NotLessThan, self).__init__()
+
+    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
+                          init_w_s):
+        return [vars_long >= self.limit, vars_short <= -self.limit]

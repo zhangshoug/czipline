@@ -94,7 +94,6 @@ class TargetWeights(ObjectiveBase):
         check_series_or_dict(weights, 'weights')
         self.weights = pd.Series(weights)
         n = len(weights)
-        # TODO:暂时没有考虑cash
         self.make_weight(n, self.weights.index)
         super(TargetWeights, self).__init__()
 
@@ -143,13 +142,11 @@ class MaximizeAlpha(ObjectiveBase):
         check_series_or_dict(alphas, 'alphas')
         self.alphas = pd.Series(alphas)
         n = len(alphas)
-        # TODO:暂时没有考虑cash
         self.make_weight(n, self.alphas.index)
         super(MaximizeAlpha, self).__init__()
 
     def _expr(self):
         alphas = self.alphas.values
-        # # 必须完全复制值
         long_profit = alphas.T * self.long_w  # 多头加权收益
         short_profit = alphas.T * self.short_w  # 空头加权收益
         return long_profit + short_profit

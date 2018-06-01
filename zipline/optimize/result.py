@@ -1,239 +1,11 @@
 """
 优化结果模型
-"""
 
-from __future__ import print_function
+尚未完成有关限制条件冲突之类的检查
+"""
 import collections
 import numpy as np
 import pandas as pd
-import copy
-
-
-def getFiscalQuarter(dt):
-    """Convert a time to a fiscal quarter.
-    """
-    year = dt.year
-    quarter = (dt.month - 1) // 3 + 1
-    return "Q%i %s" % (quarter, year)
-
-
-class SimulationResult():
-    """A container for the result of a simulation.
-
-    Attributes:
-        h_next: A dataframe of holdings over time.
-        u: A dataframe of trades over time.
-        tcosts: A series of transaction costs over time.
-        borrow_costs: A series of borrow costs over time.
-    """
-
-    def __init__(self,
-                 initial_portfolio,
-                 policy,
-                 cash_key,
-                 simulator,
-                 simulation_times=None,
-                 PPY=244,
-                 timedelta=pd.Timedelta("1 days")):
-        """
-        Initialize the result object.
-
-        Args:
-            initial_portfolio:
-            policy:
-            simulator:
-            simulation_times:
-            PPY:
-        """
-        self.PPY = PPY
-        self.timedelta = timedelta
-        self.initial_val = sum(initial_portfolio)
-        self.initial_portfolio = copy.copy(initial_portfolio)
-        self.cash_key = cash_key
-        self.simulator = simulator
-        self.policy = policy
-
-    def summary(self):
-        print(self._summary_string())
-
-    def _summary_string(self):
-        data = collections.OrderedDict({
-            'Number of periods':
-            self.u.shape[0],
-            'Initial timestamp':
-            self.h.index[0],
-            'Final timestamp':
-            self.h.index[-1],
-            'Portfolio return (%)':
-            self.returns.mean() * 100 * self.PPY,
-            'Excess return (%)':
-            self.excess_returns.mean() * 100 * self.PPY,
-            'Excess risk (%)':
-            self.excess_returns.std() * 100 * np.sqrt(self.PPY),
-            'Sharpe ratio':
-            self.sharpe_ratio,
-            'Max. drawdown':
-            self.max_drawdown,
-            'Turnover (%)':
-            self.turnover.mean() * 100 * self.PPY,
-            'Average policy time (sec)':
-            self.policy_time.mean(),
-            'Average simulator time (sec)':
-            self.simulation_time.mean(),
-        })
-
-        return (pd.Series(data=data).to_string(float_format='{:,.3f}'.format))
-
-    def log_data(self, name, t, entry):
-        try:
-            getattr(self, name).loc[t] = entry
-        except AttributeError:
-            setattr(self, name, (pd.Series
-                                 if np.isscalar(entry) else pd.DataFrame)(
-                                     index=[t], data=[entry]))
-
-    def log_policy(self, t, exec_time):
-        self.log_data("policy_time", t, exec_time)
-        # TODO mpo policy requires changes in the optimization_log methods
-        if not isinstance(self.policy, MultiPeriodOpt):
-            for cost in self.policy.costs:
-                self.log_data("policy_" + cost.__class__.__name__, t,
-                              cost.optimization_log(t))
-
-    def log_simulation(self, t, u, h_next, risk_free_return, exec_time):
-        self.log_data("simulation_time", t, exec_time)
-        self.log_data("u", t, u)
-        self.log_data("h_next", t, h_next)
-        self.log_data("risk_free_returns", t, risk_free_return)
-        for cost in self.simulator.costs:
-            self.log_data("simulator_" + cost.__class__.__name__, t,
-                          cost.simulation_log(t))
-
-    @property
-    def h(self):
-        """
-        Concatenate initial portfolio and h_next dataframe.
-
-        Infers the timestamp of last element by increasing the final timestamp.
-        """
-        tmp = self.h_next.shift(1)
-        tmp.iloc[0] = self.initial_portfolio
-        # TODO fix
-        # tmp.loc[self.h_next.index[-1] + self.timedelta]=self.h_next.iloc[-1]
-        return np.round(tmp, 2)
-
-    @property
-    def v(self):
-        """The value of the portfolio over time.
-        """
-        return np.round(self.h.sum(axis=1), 2)
-
-    @property
-    def profit(self):
-        """The profit made, in dollars."""
-        return self.v[-1] - self.v[0]
-
-    @property
-    def w(self):
-        """The weights of the portfolio over time."""
-        return np.round((self.h.T / self.v).T, 4)
-
-    @property
-    def leverage(self):
-        """Portfolio leverage"""
-        return np.abs(self.w).sum(1)
-
-    @property
-    def volatility(self):
-        """The annualized, realized portfolio volatility."""
-        return np.sqrt(self.PPY) * np.std(self.returns)
-
-    @property
-    def mean_return(self):
-        """The annualized mean portfolio return."""
-        return self.PPY * np.mean(self.returns)
-
-    @property
-    def returns(self):
-        """The returns R_t = (v_{t+1}-v_t)/v_t
-        """
-        val = self.v
-        return pd.Series(
-            data=val.values[1:] / val.values[:-1] - 1, index=val.index[:-1])
-
-    @property
-    def growth_rates(self):
-        """The growth rate log(v_{t+1}/v_t)"""
-        return np.log(self.returns + 1)
-
-    @property
-    def annual_growth_rate(self):
-        r"""The annualized growth rate PPY/T \sum_{t=1}^T log(v_{t+1}/v_t)
-        """
-        return self.growth_rates.sum() * self.PPY / self.growth_rates.size
-
-    @property
-    def annual_return(self):
-        """The annualized return in percent.
-        """
-        ret = self.growth_rates
-        return self._growth_to_return(ret.mean())
-
-    def _growth_to_return(self, growth):
-        """Convert growth to annualized percentage return.
-        """
-        return 100 * (np.exp(self.PPY * growth) - 1)
-
-    def get_quarterly_returns(self, benchmark=None):
-        """The annualized returns for each fiscal quarter.
-        """
-        ret = self.growth_rates
-        quarters = ret.groupby(getFiscalQuarter).aggregate(np.mean)
-        return self._growth_to_return(quarters)
-
-    def get_best_quarter(self, benchmark=None):
-        ret = self.get_quarterly_returns(benchmark)
-        return (ret.argmax(), ret.max())
-
-    def get_worst_quarter(self, benchmark=None):
-        ret = self.get_quarterly_returns(benchmark)
-        return (ret.argmin(), ret.min())
-
-    @property
-    def excess_returns(self):
-        return self.returns - self.risk_free_returns
-
-    @property
-    def sharpe_ratio(self):
-        return np.sqrt(self.PPY) * np.mean(self.excess_returns) / \
-            np.std(self.excess_returns)
-
-    @property
-    def turnover(self):
-        """Turnover ||u_t||_1/v_t
-        """
-        noncash_trades = self.u.drop(self.cash_key, axis=1)
-        return np.abs(noncash_trades).sum(axis=1) / self.v
-
-    @property
-    def trading_days(self):
-        """The fraction of days with nonzero turnover.
-        """
-        return (self.turnover.values > 0).sum() / self.turnover.size
-
-    @property
-    def max_drawdown(self):
-        """The maximum peak to trough drawdown in percent.
-        """
-        val_arr = self.v.values
-        max_dd_so_far = 0
-        cur_max = val_arr[0]
-        for val in val_arr[1:]:
-            if val >= cur_max:
-                cur_max = val
-            elif 100 * (cur_max - val) / cur_max > max_dd_so_far:
-                max_dd_so_far = 100 * (cur_max - val) / cur_max
-        return max_dd_so_far
 
 
 class InfeasibleConstraints(Exception):
@@ -269,8 +41,10 @@ class OptimizationFailed(Exception):
 
 
 class OptimizationResult():
-    def __init__(self, simulation_result):
-        self._result = simulation_result
+    def __init__(self, prob, objective, old_weights):
+        self.prob = prob
+        self.objective = objective
+        self._old_weights = old_weights
 
     def raise_for_status(self):
         """
@@ -279,6 +53,24 @@ class OptimizationResult():
         if self.prob.status != 'optimal':
             raise NotImplementedError('未成功优化')
 
+    def _diagnostics_str(self):
+        prob = self.prob
+        data = collections.OrderedDict({
+            '求解状态':
+            '成功' if prob.status == 'optimal' else '失败',
+            '最优解':
+            prob.value,
+            '迭代次数':
+            prob.solver_stats.num_iters,
+            '设立问题用时(s)':
+            prob.solver_stats.setup_time,
+            '求解问题用时(s)':
+            prob.solver_stats.solve_time,
+            '求解器名称':
+            prob.solver_stats.solver_name,
+        })
+        return (pd.Series(data=data).to_string(float_format='{:,.6f}'.format))
+
     def print_diagnostics(self):
         """
         Print diagnostic information gathered during the optimization.
@@ -286,49 +78,92 @@ class OptimizationResult():
         if not self.success:
             print('求解失败')
             return
-        prob = self.prob
-        objective = type(prob.objective)
-        status = '成功' if prob.status == 'optimal' else '失败'
-        num_iters = prob.solver_stats.num_iters
-        setup_time = round(prob.solver_stats.setup_time, 6)
-        solve_time = round(prob.solver_stats.solve_time, 6)
-        solver_name = prob.solver_stats.solver_name
-        msg_fmt = """
-    目标：{}
-    状态：{}
-    最优解：{}
-    迭代次数:{}
-    启动时间：{}秒\t求解时间：{}秒
-    求解器:{}
-        """
-        print(
-            msg_fmt.format(objective, status, round(prob.value, 6), num_iters,
-                           setup_time, solve_time, solver_name))
+        print(self._diagnostics_str())
 
     @property
     def old_weights(self):
         """
-        pandas.Series
+        pandas.Series 或 None
         Portfolio weights before the optimization.
         """
-        w = self._result.initial_portfolio[:-1]
-        return w / sum(w)
+        return self._old_weights
 
     @property
     def new_weights(self):
         """
-        pandas.Series or None
-
+        新权重
+        pandas.DataFrame 或 None
+            
         New optimal weights, or None if the optimization failed.
 
         """
-        w = self._result.w.iloc[-1,:-1]
-        return w / sum(w)
+        if not self.success:
+            return None
+        long_w = self.objective.long_weights_value
+        short_w = self.objective.short_weights_value
+        return pd.DataFrame(
+            {
+                'long': long_w.values,
+                'short': short_w.values,
+                'total': (long_w - short_w).values
+            },
+            index=long_w.index)
+
+    @property
+    def net_weights(self):
+        """
+        净权重
+        pandas.Series 或 None
+            
+        New optimal weights, or None if the optimization failed.
+
+        """
+        if not self.success:
+            return None
+        long_w = self.objective.long_weights_value
+        short_w = self.objective.short_weights_value
+        return long_w + short_w
+
+    @property
+    def abs_weights(self):
+        """
+        总权重
+        pandas.Series 或 None
+        
+        
+        New optimal weights, or None if the optimization failed.
+
+        """
+        return self.objective.weights_value
+
+    @property
+    def long_weights(self):
+        """
+        多头总权重
+        pandas.Series 或 None
+        
+        
+        New optimal weights, or None if the optimization failed.
+
+        """
+        return self.objective.long_weights_value
+
+    @property
+    def short_weights(self):
+        """
+        空头总权重
+        pandas.Series 或 None
+        
+        
+        New optimal weights, or None if the optimization failed.
+
+        """
+        return self.objective.short_weights_value
 
     @property
     def diagnostics(self):
         """
-        quantopian.optimize.Diagnostics
+        zipline.optimize.Diagnostics
 
         Object containing diagnostic information about violated
         (or potentially violated) constraints.

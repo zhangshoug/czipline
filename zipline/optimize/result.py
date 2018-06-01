@@ -41,10 +41,11 @@ class OptimizationFailed(Exception):
 
 
 class OptimizationResult():
-    def __init__(self, prob, objective, old_weights):
+    def __init__(self, prob, objective, old_weights,constraint_map):
         self.prob = prob
         self.objective = objective
         self._old_weights = old_weights
+        self.constraint_map = constraint_map
 
     def raise_for_status(self):
         """
@@ -128,12 +129,12 @@ class OptimizationResult():
     def abs_weights(self):
         """
         总权重
-        pandas.Series 或 None
-        
-        
+        pandas.Series 或 None  
         New optimal weights, or None if the optimization failed.
 
         """
+        if not self.success:
+            return None
         return self.objective.weights_value
 
     @property
@@ -141,11 +142,10 @@ class OptimizationResult():
         """
         多头总权重
         pandas.Series 或 None
-        
-        
         New optimal weights, or None if the optimization failed.
-
         """
+        if not self.success:
+            return None
         return self.objective.long_weights_value
 
     @property
@@ -153,11 +153,11 @@ class OptimizationResult():
         """
         空头总权重
         pandas.Series 或 None
-        
-        
         New optimal weights, or None if the optimization failed.
 
         """
+        if not self.success:
+            return None
         return self.objective.short_weights_value
 
     @property
@@ -170,6 +170,7 @@ class OptimizationResult():
         """
         pass
 
+    @property
     def status(self):
         """
         str
@@ -179,6 +180,7 @@ class OptimizationResult():
         """
         return self.prob.status
 
+    @property
     def success(self):
         """
         class:bool

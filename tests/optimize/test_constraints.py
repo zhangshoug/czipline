@@ -113,9 +113,9 @@ class TestObjectives(unittest.TestCase):
         init_w_s = pd.Series([-5, 0, -3, 0, 2, 4, 5], index=self.stocks) / 10.
         value = 0.40
         desired_long = pd.Series(
-            [0.0] * 4 + [0.0028, 0.5, 0.5], index=self.stocks)
+            [0.0] * 4 + [0.0, 0.5, 0.5], index=self.stocks)
         desired_short = pd.Series(
-            [-0.495, -0.0, -0.0022] + [0.0] * 4, index=self.stocks)
+            [-0.5, -0.0, -0.0] + [0.0] * 4, index=self.stocks)
         self.check(cons_obj, value, desired_long, desired_short, init_w_s)
 
     def test_Frozen(self):
@@ -135,14 +135,6 @@ class TestObjectives(unittest.TestCase):
         desired_long = pd.Series([0.0] * 6 + [0.3262], index=self.stocks)
         desired_short = pd.Series(
             [-0.9738, -0.1, -0.1] + [0.0] * 4, index=self.stocks)
-        self.check(cons_obj, value, desired_long, desired_short)
-
-    def test_Pair(self):
-        cons_obj = Pair('000007', '000001', 0.4)
-        value = 0.38
-        desired_long = pd.Series([0.0] * 5 + [0.3199, 0.4], index=self.stocks)
-        desired_short = pd.Series(
-            [-0.4, -0.3801] + [0.0] * 5, index=self.stocks)
         self.check(cons_obj, value, desired_long, desired_short)
 
     def test_FactorExposure(self):
@@ -279,6 +271,15 @@ class TestObjectives(unittest.TestCase):
         desired_long = pd.Series([0.0] * 5 + [0.25, 0.5], index=self.stocks)
         desired_short = pd.Series([-0.75] + [0.0] * 6, index=self.stocks)
         self.check(cons_obj, value, desired_long, desired_short)
+
+    def test_Pair(self):
+        init_w_s = pd.Series([-0.5, 0, 0, 0, 0, 0.5, 0], index=self.stocks) / 10.
+        cons_obj = Pair('000006', '000001', 2)
+        value = 0.37
+        desired_long = pd.Series([0.0] * 5 + [0.5, 0.5], index=self.stocks)
+        desired_short = pd.Series(
+            [-0.25] * 2 + [0.0] * 5, index=self.stocks)
+        self.check(cons_obj, value, desired_long, desired_short, init_w_s)
 
 
 if __name__ == '__main__':

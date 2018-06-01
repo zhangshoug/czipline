@@ -97,6 +97,11 @@ class TargetWeights(ObjectiveBase):
         self.make_weight(n, self.weights.index)
         super(TargetWeights, self).__init__()
 
+    def __repr__(self):
+        """Returns a string with information about the constraint.
+        """
+        return "%s(%s)" % (self.__class__.__name__, 'weights')
+
     def _expr(self):
         # 目标权重
         t_w = self.weights.values
@@ -144,6 +149,11 @@ class MaximizeAlpha(ObjectiveBase):
         n = len(alphas)
         self.make_weight(n, self.alphas.index)
         super(MaximizeAlpha, self).__init__()
+
+    def __repr__(self):
+        """Returns a string with information about the constraint.
+        """
+        return "%s(%s)" % (self.__class__.__name__, 'alphas')
 
     def _expr(self):
         alphas = self.alphas.values

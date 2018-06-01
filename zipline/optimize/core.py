@@ -41,32 +41,15 @@ def _check_assets(objective, constraints, current_portfolio):
                     con.__class__.__name__, diff))
 
 
-def _check_constraints(constraints):
-    """检查限定条件"""
-    pass
-
-
-def _check_problem():
-    """检查问题状态"""
-    pass
-
-
-# def _run(objective, constraints, current_portfolio):
-#     """运行求解，返回问题对象"""
-#     init_w_s = current_portfolio
-#     l_w = objective.long_w
-#     s_w = objective.short_w
-#     l_w_s = objective.long_weights_series
-#     s_w_s = objective.short_weights_series
-#     constraint_list = []
-#     for cons_obj in constraints:
-#         constraint_list.extend([
-#             con for con in cons_obj.gen_constraints(l_w, s_w, l_w_s, s_w_s,
-#                                                     init_w_s)
-#         ])
-#     prob = cvx.Problem(objective.objective, constraint_list)
-#     prob.solve()
-#     return prob
+def run_diagnostics(objective, constraint_map):
+    for class_, cons in constraint_map.items():
+        name = class_.__class__.__name__
+        for con in cons:
+            try:
+                print(name, '值', con.violation())
+                print('')
+            except:
+                print('{}约束无效'.format(name))
 
 
 def _run(objective, constraints, current_portfolio):
@@ -82,8 +65,13 @@ def _run(objective, constraints, current_portfolio):
     cvx_constraints = list(concat(constraint_map.values()))
     prob = cvx.Problem(objective.objective, cvx_constraints)
     prob.solve()
-    return prob
-
+    return prob, constraint_map
+    # try:
+    #     prob.solve()
+    #     # TODO：要删除。临时传递出来constraint_map
+    #     return prob, constraint_map
+    # except cvx.SolverError:
+    #     raise OptimizationFailed('存在相互矛盾的限制条件，求解失败')
 
 def run_optimization(objective, constraints, current_portfolio=None):
     """
@@ -113,8 +101,8 @@ def run_optimization(objective, constraints, current_portfolio=None):
     # 检查current_portfolio与目标所含assets一致性
     _check_assets(objective, constraints, current_portfolio)
     assert isinstance(constraints, list), 'constraints应该为列表类型'
-    prob = _run(objective, constraints, current_portfolio)
-    result = OptimizationResult(prob, objective, current_portfolio)
+    prob, constraint_map = _run(objective, constraints, current_portfolio)
+    result = OptimizationResult(prob, objective, current_portfolio, constraint_map)
     return result
 
 
@@ -172,9 +160,9 @@ def calculate_optimal_portfolio(objective, constraints,
     result = run_optimization(objective, constraints, current_portfolio)
     status = result.prob.status
     if status == 'unbounded':
-        raise UnboundedObjective('目标无界')
+        raise UnboundedObjective('问题无界。如没有限制总权重，求解最大alpha时，目标权重无上界')
     elif status == 'infeasible':
-        raise InfeasibleConstraints('限制不可行')
+        raise InfeasibleConstraints('限制不可行。如设定了相互矛盾的限制')
     v = result.prob.value
     if np.isposinf(v) or np.isneginf(v):
         raise OptimizationFailed('求解失败')

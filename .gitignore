@@ -87,3 +87,4 @@ README.ipynb
 src/*.*
 
 zipline/_optimize/*.*
+src/blaze

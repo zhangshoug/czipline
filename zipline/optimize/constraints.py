@@ -6,7 +6,7 @@ from abc import ABCMeta, abstractmethod
 
 import numpy as np
 import pandas as pd
-
+from collections import Iterable
 import cvxpy as cvx
 
 from .utils import check_series_or_dict
@@ -41,6 +41,16 @@ class BaseConstraint(object):
 
     def __init__(self):
         self.constraint_assets = None
+
+    def __repr__(self):
+        """Returns a string with information about the constraint.
+        """
+        return "%s()" % (self.__class__.__name__)
+
+    def get_ix(self, series, asset_or_assets):
+        index = series.index
+        ix = index.get_indexer(asset_or_assets)
+        return ix
 
     def gen_constraints(self,
                         vars_long,
@@ -90,10 +100,17 @@ class MaxGrossExposure(BaseConstraint):
         self.max_ = max_
         super(MaxGrossExposure, self).__init__()
 
+    def __repr__(self):
+        """Returns a string with information about the constraint.
+        """
+        return "%s(%s)" % (self.__class__.__name__, self.max_)
+
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
-        w = vars_long - vars_short
-        return [cvx.norm(w, 1) <= self.max_]
+        # return [cvx.sum(vars_long - vars_short) <= self.max_]
+        # w = vars_long - vars_short
+        # return [cvx.norm(w, 1) <= self.max_]
+        return [cvx.sum(vars_long + cvx.abs(vars_short)) <= self.max_]
 
 
 class NetExposure(BaseConstraint):
@@ -125,6 +142,11 @@ class NetExposure(BaseConstraint):
         self.max_ = max_
         super(NetExposure, self).__init__()
 
+    def __repr__(self):
+        """Returns a string with information about the constraint.
+        """
+        return "%s(%s,%s)" % (self.__class__.__name__, self.min_, self.max_)
+
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
         total = cvx.sum(vars_long + vars_short)
@@ -147,6 +169,11 @@ class DollarNeutral(BaseConstraint):
         assert tolerance < 0.01, 'tolerance太大没有意义'
         self.tolerance = tolerance
         super(DollarNeutral, self).__init__()
+
+    def __repr__(self):
+        """Returns a string with information about the constraint.
+        """
+        return "%s(%s)" % (self.__class__.__name__, self.tolerance)
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
@@ -563,6 +590,12 @@ class Pair(BaseConstraint):
         self.constraint_assets = pd.Index([self.long_, self.short_])
         super(Pair, self).__init__()
 
+    def __repr__(self):
+        """Returns a string with information about the constraint.
+        """
+        return "%s(%s，%s，对冲比率：%s)" % (self.__class__.__name__, self.long_,
+                                      self.short_, self.hedge_ratio)
+
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
         """
@@ -618,26 +651,32 @@ class Basket(BaseConstraint):
 
     def __init__(self, assets, min_net_exposure, max_net_exposure):
         assert min_net_exposure < max_net_exposure, '最小值应小于最大值'
+        if not isinstance(assets, Iterable):
+            assets = [assets]
         self.assets = assets
         self.min_net_exposure = min_net_exposure
         self.max_net_exposure = max_net_exposure
-        self.constraint_assets = pd.Index(self.assets)
+        self.constraint_assets = self.assets
         super(Basket, self).__init__()
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
         min_cons, max_cons = [], []
-        long_expr = w_long_s.loc[self.assets].values
-        short_expr = w_short_s.loc[self.assets].values
-        if len(long_expr):
-            min_cons = [
-                e_l + e_s >= self.min_net_exposure
-                for e_l, e_s in zip(long_expr, short_expr)
-            ]
-            max_cons = [
-                e_l + e_s <= self.max_net_exposure
-                for e_l, e_s in zip(long_expr, short_expr)
-            ]
+
+        long_ix = w_long_s.index.get_indexer(self.assets)
+        short_ix = w_short_s.index.get_indexer(self.assets)
+
+        long_expr = vars_long[long_ix]
+        short_expr = vars_short[short_ix]
+
+        min_cons = [
+            e_l + e_s >= self.min_net_exposure
+            for e_l, e_s in zip(long_expr, short_expr)
+        ]
+        max_cons = [
+            e_l + e_s <= self.max_net_exposure
+            for e_l, e_s in zip(long_expr, short_expr)
+        ]
         return min_cons + max_cons
 
 
@@ -652,24 +691,31 @@ class Frozen(BaseConstraint):
     """
 
     def __init__(self, asset_or_assets, max_error_display=10):
+        # 如果输入单个资产，转换为可迭代对象
+        if not isinstance(asset_or_assets, Iterable):
+            asset_or_assets = [asset_or_assets]
         self.asset_or_assets = asset_or_assets
         self.max_error_display = max_error_display
-        self.constraint_assets = pd.Index(self.asset_or_assets)
+        self.constraint_assets = self.asset_or_assets
         super(Frozen, self).__init__()
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
         assert init_w_s is not None, '固定权重(Frozen)限制期初投资组合不得为空'
         long_cons, short_cons = [], []
-        init_w = init_w_s.loc[self.asset_or_assets]
+        init_w = init_w_s[self.asset_or_assets]
+
         long_w = init_w[init_w >= 0]
         short_w = init_w[init_w < 0]
+
         if len(long_w):
             long_expr = w_long_s.loc[self.asset_or_assets].values
             long_cons = [e == b for e, b in zip(long_expr, long_w.values)]
+
         if len(short_w):
             short_expr = w_short_s.loc[self.asset_or_assets].values
             short_cons = [e == b for e, b in zip(short_expr, short_w.values)]
+
         return long_cons + short_cons
 
 
@@ -688,6 +734,9 @@ class ReduceOnly(BaseConstraint):
     """
 
     def __init__(self, asset_or_assets, max_error_display=10):
+        # 如果输入单个资产，转换为可迭代对象
+        if not isinstance(asset_or_assets, Iterable):
+            asset_or_assets = [asset_or_assets]
         self.asset_or_assets = asset_or_assets
         self.max_error_display = max_error_display
         self.constraint_assets = pd.Index(self.asset_or_assets)
@@ -716,12 +765,13 @@ class ReduceOnly(BaseConstraint):
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
         assert init_w_s is not None, '仅能减少权重限制(ReduceOnly)限制期初投资组合不得为空'
-        bias = 0.01  # 由于求解器不接受严格不等式，使用偏差微调
+        constraints = []
+        bias = 0.00001  # 由于求解器不接受严格不等式，使用偏差微调
         # 以绝对值来控制
-        init_abs_w = init_w_s.loc[self.asset_or_assets].abs().values
+        init_abs_w = init_w_s[self.asset_or_assets].abs().values
         if len(init_abs_w):
-            long_expr = w_long_s.loc[self.asset_or_assets].values
-            short_expr = w_short_s.loc[self.asset_or_assets].values
+            long_expr = w_long_s[self.asset_or_assets].values
+            short_expr = w_short_s[self.asset_or_assets].values
             constraints = [
                 cvx.abs(e1) + cvx.abs(e2) <= b * (1 - bias)
                 for e1, e2, b in zip(long_expr, short_expr, init_abs_w)
@@ -740,6 +790,9 @@ class LongOnly(BaseConstraint):
     """
 
     def __init__(self, asset_or_assets, max_error_display=10):
+        # 如果输入单个资产，转换为可迭代对象
+        if not isinstance(asset_or_assets, Iterable):
+            asset_or_assets = [asset_or_assets]
         self.asset_or_assets = asset_or_assets
         self.max_error_display = max_error_display
         self.constraint_assets = pd.Index(self.asset_or_assets)
@@ -748,7 +801,7 @@ class LongOnly(BaseConstraint):
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
         # 对特定资产的空头权重表达式限定为大于0
-        vars_w = w_short_s.loc[self.asset_or_assets].tolist()
+        vars_w = w_short_s[self.asset_or_assets].tolist()
         return [expr >= 0 for expr in vars_w]
 
 
@@ -789,15 +842,21 @@ class FixedWeight(BaseConstraint):
     def __init__(self, asset, weight):
         self.asset = asset
         self.weight = weight
-        self.constraint_assets = pd.Index(asset)
+        self.constraint_assets = asset
         super(FixedWeight, self).__init__()
+
+    def __repr__(self):
+        """Returns a string with information about the constraint.
+        """
+        return "%s(限定%s权重为%s)" % (self.__class__.__name__, self.asset,
+                                  self.weight)
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
         if self.weight >= 0:
-            expr = w_long_s.loc[self.asset]
+            expr = w_long_s[self.asset]
         else:
-            expr = w_short_s.loc[self.asset]
+            expr = w_short_s[self.asset]
         return [expr == self.weight]
 
 
@@ -827,7 +886,7 @@ class CannotHold(BaseConstraint):
 
 class NotExceed(BaseConstraint):
     """
-    无论多头或空头所有单个资产的权重不得超过一个常数
+    无论多头或空头，所有单个资产的权重不得超过一个常数
     权重介于 [-limit, limit]
     Parameters
     ----------
@@ -840,16 +899,24 @@ class NotExceed(BaseConstraint):
         self.limit = limit
         super(NotExceed, self).__init__()
 
+    def __repr__(self):
+        """Returns a string with information about the constraint.
+        """
+        return "%s(所有权重区间[-%s,+%s])" % (self.__class__.__name__, self.limit,
+                                        self.limit)
+
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
-        return [vars_long <= self.limit, vars_short >= -self.limit]
-
+        # 空头变量已经设定为非正
+        # 多头变量已经设定为非负
+        return [
+            vars_long <= self.limit, 
+            vars_short >= -self.limit
+        ]
 
 class NotLessThan(BaseConstraint):
     """
-    无论多头或空头所有单个资产的权重不得低于一个常数
-    空头权重 [-∞,-limit]
-    多头权重 [limit, ∞]
+    单个资产的总权重不得低于一个常数
 
     Parameters
     ----------
@@ -862,6 +929,12 @@ class NotLessThan(BaseConstraint):
         self.limit = limit
         super(NotLessThan, self).__init__()
 
+    def __repr__(self):
+        """Returns a string with information about the constraint.
+        """
+        return "%s(所有绝对值权重>=%s)" % (self.__class__.__name__, self.limit)
+
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
-        return [vars_long >= self.limit, vars_short <= -self.limit]
+        # return [vars_long >= self.limit, vars_short <= -self.limit]
+        return [vars_long - vars_short >= self.limit]

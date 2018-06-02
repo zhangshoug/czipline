@@ -9,7 +9,7 @@ import pandas as pd
 from collections import Iterable
 import cvxpy as cvx
 
-from .utils import check_series_or_dict
+from .utils import check_series_or_dict, get_ix
 
 __all__ = [
     'NotConstrained',
@@ -46,11 +46,6 @@ class BaseConstraint(object):
         """Returns a string with information about the constraint.
         """
         return "%s()" % (self.__class__.__name__)
-
-    def get_ix(self, series, asset_or_assets):
-        index = series.index
-        ix = index.get_indexer(asset_or_assets)
-        return ix
 
     def gen_constraints(self,
                         vars_long,

@@ -2,7 +2,7 @@
 目标模块
 
 假设前提：
-    1. 无论是目标权重或当前权重，在特定时刻，单个资产不得同时存在多头与空头权重，即符号唯一；
+    1. 无论是目标权重或当前权重，在特定时刻，单个资产不得同时存在多头与空头权重；
 
 """
 
@@ -14,13 +14,13 @@ import pandas as pd
 
 import cvxpy as cvx
 
-from .utils import check_series_or_dict
+from .utils import check_series_or_dict, get_ix
 
 __all__ = ['TargetWeights', 'MaximizeAlpha']
 
 
 class ObjectiveBase(object):
-    """目标基类"""
+    """目标基类。子类objective属性代表cvxpy目标对象"""
     __metaclass__ = ABCMeta
 
     cash_key = 'cash'
@@ -39,15 +39,16 @@ class ObjectiveBase(object):
         self.assets = assets
 
     @property
-    def new_weightseights_series(self):
-        """多头权重表达式序列"""
+    def new_weights_series(self):
+        """权重表达式序列"""
+        n = len(self.assets)
         return pd.Series(
-            [self.new_weights[i] for i in range(self.n)], index=self.assets)
+            [self.new_weights[i] for i in range(n)], index=self.assets)
 
     @property
-    def new_weightseights_value(self):
+    def new_weights_value(self):
         """多头权重值"""
-        return self.new_weightseights_series.map(lambda x: round(x.value, 4))
+        return self.new_weights_series.map(lambda x: round(x.value, 6))
 
 
 class TargetWeights(ObjectiveBase):
@@ -83,14 +84,8 @@ class TargetWeights(ObjectiveBase):
 
     def _expr(self):
         # 目标权重
-        t_w = self.weights.values
-        # 必须完全复制值
-        l_w, s_w = np.array(t_w), np.array(t_w)
-        l_w[t_w <= 0] = 0.
-        s_w[t_w >= 0] = 0.
-        long_err = cvx.sum_squares(self.new_weights - l_w)
-        short_err = cvx.sum_squares(self.short_w - s_w)
-        return long_err + short_err
+        err = cvx.sum_squares(self.new_weights - self.weights.values)
+        return err
 
     @property
     def objective(self):
@@ -135,19 +130,8 @@ class MaximizeAlpha(ObjectiveBase):
 
     def _expr(self):
         alphas = self.alphas.values
-        long_profit = alphas.T * self.new_weights  # 多头加权收益
-        short_profit = alphas.T * self.short_w  # 空头加权收益
-        return cvx.sum(long_profit + short_profit)
-
-    # def _expr(self):
-    #     alphas = self.alphas.values
-    #     # 必须完全复制值
-    #     l_a, s_a = np.array(alphas), np.array(alphas)
-    #     l_a[l_a <= 0] = 0.
-    #     s_a[s_a >= 0] = 0.
-    #     long_profit = l_a.T * self.new_weights  # 多头加权收益
-    #     short_profit = s_a.T * self.short_w  # 空头加权收益
-    #     return long_profit + short_profit
+        profit = alphas.T * self.new_weights  # 加权收益
+        return cvx.sum(profit)
 
     @property
     def objective(self):

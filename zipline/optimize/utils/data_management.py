@@ -6,9 +6,14 @@ import numpy as np
 import pandas as pd
 
 __all__ = [
-    'check_series_or_dict', 'time_matrix_locator', 'time_locator',
+    'check_series_or_dict', 'get_ix', 'time_matrix_locator', 'time_locator',
     'null_checker', 'non_null_data_args'
 ]
+
+
+class NotFoundAsset(Exception):
+    """找不到对应资产异常"""
+    pass
 
 
 def check_series_or_dict(x, name):
@@ -17,6 +22,16 @@ def check_series_or_dict(x, name):
     is_d = isinstance(x, dict)
     if not (is_s or is_d):
         raise TypeError('参数名称{}类型错误。应为pd.Series或者dict'.format(name))
+
+
+def get_ix(series, assets):
+    # assets必须可迭代
+    index = series.index
+    ix = index.get_indexer(assets)
+    if -1 in ix:
+        raise NotFoundAsset('无法找到资产：{}'.format(
+            pd.Index(assets).difference(index)))
+    return ix
 
 
 def null_checker(obj):

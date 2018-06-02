@@ -815,7 +815,7 @@ class NotExceed(BaseConstraint):
     def __repr__(self):
         """Returns a string with information about the constraint.
         """
-        return "%s(所有权重区间[-%s,+%s])" % (self.__class__.__name__, self.limit,
+        return "%s(区间[-%s,+%s])" % (self.__class__.__name__, self.limit,
                                         self.limit)
 
     def _constraints_list(self, weight_var, weight_var_series, init_weights):

@@ -23,7 +23,9 @@ class ObjectiveBase(object):
     """目标基类。子类objective属性代表cvxpy目标对象"""
     __metaclass__ = ABCMeta
 
-    cash_key = 'cash'
+    def __init__(self, digits=6):
+        self.cash_key = 'cash'
+        self.digits = digits
 
     @abstractmethod
     def _expr(self):
@@ -48,7 +50,7 @@ class ObjectiveBase(object):
     @property
     def new_weights_value(self):
         """多头权重值"""
-        return self.new_weights_series.map(lambda x: round(x.value, 6))
+        return self.new_weights_series.map(lambda x: round(x.value, self.digits))
 
 
 class TargetWeights(ObjectiveBase):

@@ -25,6 +25,7 @@ def check_series_or_dict(x, name):
 
 
 def get_ix(series, assets):
+    """从指定序列中查找assets位置序号"""
     # assets必须可迭代
     index = series.index
     ix = index.get_indexer(assets)

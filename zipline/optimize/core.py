@@ -54,24 +54,20 @@ def run_diagnostics(objective, constraint_map):
 
 def _run(objective, constraints, current_portfolio):
     """运行求解，返回问题对象"""
-    l_w = objective.long_w
-    s_w = objective.short_w
-    l_w_s = objective.long_weights_series
-    s_w_s = objective.short_weights_series
+    w = objective.new_weights
+    w_s = objective.new_weights_series
     constraint_map = {
-        c: c.gen_constraints(l_w, s_w, l_w_s, s_w_s, current_portfolio)
+        c: c.gen_constraints(w, w_s, current_portfolio)
         for c in constraints
     }
     cvx_constraints = list(concat(constraint_map.values()))
     prob = cvx.Problem(objective.objective, cvx_constraints)
-    prob.solve() #solver=cvx.ECOS)
-    return prob, constraint_map
-    # try:
-    #     prob.solve()
-    #     # TODO：要删除。临时传递出来constraint_map
-    #     return prob, constraint_map
-    # except cvx.SolverError:
-    #     raise OptimizationFailed('存在相互矛盾的限制条件，求解失败')
+    try:
+        prob.solve()
+        # TODO：要删除。临时传递出来constraint_map
+        return prob, constraint_map
+    except cvx.SolverError:
+        raise OptimizationFailed('存在相互矛盾的限制条件，求解失败')
 
 def run_optimization(objective, constraints, current_portfolio=None):
     """

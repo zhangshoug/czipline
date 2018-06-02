@@ -48,28 +48,23 @@ class BaseConstraint(object):
         return "%s()" % (self.__class__.__name__)
 
     def gen_constraints(self,
-                        vars_long,
-                        vars_short,
-                        w_long_s=None,
-                        w_short_s=None,
-                        init_w_s=None):
+                        weight_var,
+                        weight_var_series=None,
+                        init_weights=None):
         """
         返回限制列表
 
         Args
         ----
-        vars_long：多头权重变量
-        vars_short：空头权重变量
-        w_long_s：多头权重表达式序列(以assets为索引)
-        w_short：空头权重表达式序列(以assets为索引)
-        init_w_s：初始权重值序列(以assets为索引)
+        weight_var:权重变量
+        weight_var_series:权重表达式序列(以assets为索引)
+        init_weights:初始权重值序列(以assets为索引)
         """
-        return self._constraints_list(vars_long, vars_short, w_long_s,
-                                      w_short_s, init_w_s)
+        return self._constraints_list(weight_var, weight_var_series,
+                                      init_weights)
 
     @abstractmethod
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
         """子类完成具体表达式"""
         pass
 
@@ -100,11 +95,9 @@ class MaxGrossExposure(BaseConstraint):
         """
         return "%s(%s)" % (self.__class__.__name__, self.max_)
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
-        # w = vars_long + cvx.abs(vars_short)
-        # return [cvx.norm(w, 1) <= self.max_]
-        return [cvx.sum(vars_long + cvx.abs(vars_short)) <= self.max_]
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+        return [cvx.sum(cvx.abs(weight_var)) <= self.max_]
+        # return [cvx.norm(cvx.abs(weight_var), 2) <= self.max_]
 
 
 class NetExposure(BaseConstraint):
@@ -141,9 +134,8 @@ class NetExposure(BaseConstraint):
         """
         return "%s(%s,%s)" % (self.__class__.__name__, self.min_, self.max_)
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
-        total = cvx.sum(vars_long + vars_short)
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+        total = cvx.sum(weight_var)
         return [total >= self.min_, total <= self.max_]
 
 
@@ -157,6 +149,14 @@ class DollarNeutral(BaseConstraint):
     ----------
     tolerance : float, optional
         允许的净风险敞口偏移率。默认值是0.0001
+
+    注
+    --
+        其逻辑是，不需要维持原权重，只需在新的权重中对涉及到的股票多空偏差落在允许范围即可
+        只限定初始权重多空偏差
+
+        如果只是限定新的目标权重多空同等规模，设定`NetExposure(-0.0001,0.0001)`有同样效果，
+        无需多此一举。初步判断逻辑如上所述。
     """
 
     def __init__(self, tolerance=0.0001):
@@ -169,11 +169,22 @@ class DollarNeutral(BaseConstraint):
         """
         return "%s(%s)" % (self.__class__.__name__, self.tolerance)
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
-        diff = cvx.sum(vars_long) + cvx.sum(vars_short)
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+        # 在原权重中分别找出多头与空头权重序列
+        long_w = init_weights[init_weights >= 0]
+        short_w = init_weights[init_weights < 0]
+
+        # 为使shape一致，需要使用fillna，以0值填充
+        common_index = long_w.index.union(short_w.index).unique()
+        long_w = long_w.reindex(common_index).fillna(0)
+        short_w = short_w.reindex(common_index).fillna(0)
+
+        # 找到涉及到变量的位置
+        ix = get_ix(weight_var_series, common_index)
+
+        # 限定其和的绝对值不超过容忍阀值
         return [
-            cvx.norm(diff, 1) <= self.tolerance,
+            cvx.abs(cvx.sum(weight_var[ix])) <= self.tolerance,
         ]
 
 
@@ -227,28 +238,33 @@ class NetGroupExposure(BaseConstraint):
 
     Notes
     -----
-    对于不应设置最低限制的组，请设置：
+    1. 对于不应设置最低限制的组，请设置：
 
-    min_weights[group_label] = opt.NotConstrained
+    >>> min_weights[group_label] = opt.NotConstrained
 
-    对于不应设置最高限制的组，请设置：
+    2. 对于不应设置最高限制的组，请设置：
 
-    max_weights[group_label] = opt.NotConstrained
+    >>> max_weights[group_label] = opt.NotConstrained
+
+    3. 如果组最小限制大于0，组内依然允许空头，只需保持净敞口大于0
+
+    4. 同样，如果组最大限制小于0，组内依然允许多头，只需保持净敞口小于0
     """
 
     def __init__(self, labels, min_weights, max_weights, etf_lookthru=None):
-        msg = """
-        每组都必须指定上下限。如果某组不需要上限或下限，请使用：
-        min_weights[group_label] = opt.NotConstrained 或
-        max_weights[group_label] = opt.NotConstrained
-        """
+        # msg = """
+        # 每组都必须指定上下限。如果某组不需要上限或下限，请使用：
+        # min_weights[group_label] = opt.NotConstrained 或
+        # max_weights[group_label] = opt.NotConstrained
+        # """
         check_series_or_dict(labels, 'labels')
         check_series_or_dict(min_weights, 'min_weights')
         check_series_or_dict(max_weights, 'max_weights')
         labels = pd.Series(labels)
         min_weights = pd.Series(min_weights)
         max_weights = pd.Series(max_weights)
-        assert min_weights.index.equals(max_weights.index), msg
+        # 现在可以不对称限定组
+        # assert min_weights.index.equals(max_weights.index), msg
         self.labels = labels
         self.min_weights = min_weights
         self.max_weights = max_weights
@@ -291,109 +307,41 @@ class NetGroupExposure(BaseConstraint):
             max_weights=pd.Series(index=labels.unique(), data=max_),
         )
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
         constraints = []
-
-        def gen_constraints(expr_list, limit, is_gt):
-            """内部生成限制列表"""
-            if is_gt == '大于':
-                constraints.extend([expr >= limit for expr in expr_list])
-            else:
-                constraints.extend([expr <= limit for expr in expr_list])
-
         labels = self.labels
-        groups = self.max_weights.index  #.union(self.min_weights.index).unique()
+        groups = self.max_weights.index.union(self.min_weights.index).unique()
+
         msg_fmt = '组"{}"最小值"{}"应小于等于最大值"{}"'
         for g in groups:
             min_ = self.min_weights[g]
             max_ = self.max_weights[g]
-            assert min_ <= max_, msg_fmt.format(g, min_, max_)
+            # 只有二方都限定，才比较
+            limited_min = min_ != 'NotConstrained'
+            limited_max = max_ != 'NotConstrained'
+            if limited_min and limited_max:
+                assert min_ <= max_, msg_fmt.format(g, min_, max_)
+            # 该组涉及到的股票
             assets = labels[labels == g].index
-            g_l_w = w_long_s.loc[assets].values  # 组多头表达式
-            g_s_w = w_short_s.loc[assets].values  # 组空头表达式
-            if min_ != 'NotConstrained':
-                gen_constraints(g_l_w, min_, '大于')  # 多头大于最小值
-                if min_ >= 0:
-                    # 该组不允许空头
-                    gen_constraints(g_s_w, 0, '大于')  # 空头设大于0
-                else:
-                    # 空头也大于最小值
-                    gen_constraints(g_s_w, min_, '大于')
-            if max_ != 'NotConstrained':
-                gen_constraints(g_s_w, max_, '小于')
-                # 不处理最大值限制
-                if max_ <= 0:
-                    # 该组不允许多头
-                    gen_constraints(g_l_w, 0, '小于')
-                else:
-                    gen_constraints(g_l_w, max_, '小于')
+            # 股票对应的变量位置序号
+            ix = get_ix(weight_var_series, assets)
+
+            # 如果该组没有对应序号，跳过
+            if len(ix) == 0:
+                continue
+
+            var_list = weight_var[ix]
+
+            # 如果限定该组上限
+            # if limited_max and len(var_list):
+            if limited_max:
+                constraints.append(cvx.sum(var_list) <= max_)
+
+            # 如果限定该组下限
+            # if limited_min  and len(var_list):
+            if limited_min:
+                constraints.append(cvx.sum(var_list) >= min_)
         return constraints
-
-    # def _constraints_list(self, w, vars_long, vars_short, assets):
-    #     # 限定条件表达式列表
-    #     constraints = []
-    #     # 行业组
-    #     groups = self.max_weights.index  #.union(self.min_weights.index)
-    #     # 存放分组变量
-    #     group_l_w = {g: [] for g in groups}
-    #     group_s_w = {g: [] for g in groups}
-    #     for i, idx in enumerate(assets):
-    #         if idx in self.labels.index:
-    #             g = self.labels[idx]
-    #             group_l_w[g].append(vars_long[i])
-    #             group_s_w[g].append(vars_short[i])
-    #     msg_fmt = '分组{}中：最大值限制：{}应大于最小值限制：{}'
-    #     for g in groups:
-    #         min_limit = self.min_weights[g]
-    #         max_limit = self.max_weights[g]
-    #         assert max_limit > min_limit, msg_fmt.format(
-    #             g, max_limit, min_limit)
-    #         if min_limit < 0:
-    #             expr_1 = cvx.sum(group_s_w[g]) >= min_limit
-    #         else:
-    #             expr_1 = cvx.sum(group_l_w[g]) >= min_limit
-    #         if max_limit < 0:
-    #             expr_2 = cvx.sum(group_s_w[g]) <= max_limit
-    #         else:
-    #             expr_2 = cvx.sum(group_l_w[g]) <= max_limit
-    #         constraints.extend([expr_1, expr_2])
-    #     return constraints
-
-    # def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-    #                       init_w_s):
-    #     # 限定条件表达式列表
-    #     constraints = []
-    #     # 行业组
-    #     groups = self.max_weights.index.union(self.min_weights.index).unique()
-    #     # 存放分组变量
-    #     group_l_w = {g: [] for g in groups}
-    #     group_s_w = {g: [] for g in groups}
-    #     assets = w_long_s.index
-    #     for i, idx in enumerate(assets):
-    #         if idx in self.labels.index:
-    #             g = self.labels[idx]
-    #             group_l_w[g].append(vars_long[i])
-    #             group_s_w[g].append(vars_short[i])
-    #     # 添加下限
-    #     for g in groups:
-    #         min_limit = self.min_weights[g]
-    #         if min_limit == NotConstrained:
-    #             continue
-    #         # 组多空变量列表
-    #         g_v = group_s_w[g] + group_l_w[g]
-    #         expr_g = cvx.sum(g_v)
-    #         constraints.append(expr_g >= min_limit)
-    #     # 添加上限
-    #     for g in groups:
-    #         max_limit = self.max_weights[g]
-    #         if max_limit == NotConstrained:
-    #             continue
-    #         # 组变量列表
-    #         g_v = group_s_w[g] + group_l_w[g]
-    #         expr_g = cvx.sum(g_v)
-    #         constraints.append(expr_g <= max_limit)
-    #     return constraints
 
 
 class PositionConcentration(BaseConstraint):
@@ -475,43 +423,46 @@ class PositionConcentration(BaseConstraint):
         """
         return PositionConcentration(pd.Series(), pd.Series(), min_, max_)
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
         # 限定条件表达式列表
         constraints = []
         d_min = self.default_min_weight
         d_max = self.default_max_weight
-        assets = w_long_s.index
-        candidates_min = self.min_weights[assets]
-        candidates_max = self.max_weights[assets]
-        candidates_min.fillna(d_min, inplace=True)
-        candidates_max.fillna(d_max, inplace=True)
-        assert all(candidates_max >= candidates_min), '单个股票的最大值应大于等于最小值'
-        for i, (min_, max_) in enumerate(
-                zip(candidates_min.values, candidates_max.values)):
-            if min_ >= 0:
-                # 最小值、最大值均位于零点右侧
-                constraints.extend([
-                    # 不允许空头
-                    vars_short[i] >= 0,
-                    vars_long[i] >= min_,
-                    vars_long[i] <= max_
-                ])
-            else:
-                if max_ >= 0:
-                    # 最大值位于零点右侧，而最小值位于左侧
-                    constraints.extend([
-                        vars_long[i] >= 0, vars_long[i] <= max_,
-                        vars_short[i] <= 0, vars_short[i] >= min_
-                    ])
-                else:
-                    # 最小值、最大值均位于零点左侧
-                    constraints.extend([
-                        # 不允许多头
-                        vars_long[i] <= 0,
-                        vars_short[i] >= min_,
-                        vars_short[i] <= max_
-                    ])
+        # 逻辑关系：如果提供部分限制，所涉及到的股票视为总体
+        # 总体中没有明确最小或最大限制，使用默认值
+        # 如果全部使用默认值，总体为期初权重序列的Index
+        if len(self.min_weights) == 0 and len(self.max_weights) == 0:
+            msg = '全部股票限定使用默认最小限制与最大限制时，初始权重不得为None'
+            assert init_weights is not None, msg
+            self.min_weights = pd.Series(d_min, index=init_weights.index)
+            self.max_weights = pd.Series(d_max, index=init_weights.index)
+        # 共同股票
+        common_index = self.min_weights.index.union(
+            self.max_weights.index).unique()
+
+        candidates_min = self.min_weights.reindex(common_index).fillna(d_min)
+        candidates_max = self.max_weights.reindex(common_index).fillna(d_max)
+
+        if not all(candidates_max >= candidates_min):
+            err_values = common_index[candidates_max < candidates_min]
+            msg_fmt = '在限制：{}中, 股票：{} 设置最小权重为：{}，最大权重为：{}，最小值大于最大值'
+            for asset in err_values:
+                print(
+                    msg_fmt.format(
+                        str(self), asset, candidates_min[asset],
+                        candidates_max[asset]))
+            raise ValueError('单个股票的最大值应大于等于最小值')
+
+        # 强制可迭代
+        if len(common_index) == 1:
+            common_index = [common_index]
+        # 指定限制在权重变量中所对应的位置序号
+        locs = get_ix(weight_var_series, common_index)
+        for loc, asset in zip(locs, common_index):
+            min_ = candidates_min[asset]
+            max_ = candidates_max[asset]
+            w_var = weight_var[loc]
+            constraints.extend([w_var >= min_, w_var <= max_])
         return constraints
 
 
@@ -546,17 +497,17 @@ class FactorExposure(BaseConstraint):
         self.constraint_assets = loadings.index
         super(FactorExposure, self).__init__()
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
         min_cons, max_cons = [], []
-        # 按传入权重序列顺序重排，确保与变量顺序一致
-        loadings = self.loadings.loc[w_long_s.index]
-        w = vars_long + vars_short
+        loadings = self.loadings  #.loc[weight_var_series.index].dropna()
+        ix = get_ix(weight_var_series, self.loadings.index)
         for c in loadings.columns:
             min_ = self.min_exposures[c]
             max_ = self.max_exposures[c]
-            min_cons.append(cvx.sum(w * loadings[c]) >= min_)
-            max_cons.append(cvx.sum(w * loadings[c]) <= max_)
+            assert min_ <= max_, '{} 列{}最小值"{}"必须小于等于最大值"{}"'.format(
+                str(self), c, min_, max_)
+            min_cons.append(cvx.sum(weight_var[ix] * loadings[c]) >= min_)
+            max_cons.append(cvx.sum(weight_var[ix] * loadings[c]) <= max_)
         return min_cons + max_cons
 
 
@@ -590,18 +541,17 @@ class Pair(BaseConstraint):
         return "%s(%s，%s，对冲比率：%s)" % (self.__class__.__name__, self.long_,
                                       self.short_, self.hedge_ratio)
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
         """
         参考原作者方法
         https://github.com/cvxgrp/cvxpy/issues/322
         """
-        universe = init_w_s.index
+        universe = init_weights.index
         long_ix, short_ix = universe.get_indexer([self.long_, self.short_])
 
         # 对应变量
-        long_weight = vars_long[long_ix]
-        short_weight = vars_short[short_ix]
+        long_weight = weight_var[long_ix]
+        short_weight = weight_var[short_ix]
 
         # The hedge ratio constraint is better understood logically as
         #       hedge_ratio = long_weight / -short_weight,
@@ -644,7 +594,9 @@ class Basket(BaseConstraint):
     """
 
     def __init__(self, assets, min_net_exposure, max_net_exposure):
-        assert min_net_exposure < max_net_exposure, '最小值应小于最大值'
+        msg_fmt = '限制:{}, 最小值应小于等于最大值'
+        assert min_net_exposure < max_net_exposure, msg_fmt.format(
+            self.__class__.__name__)
         if not isinstance(assets, Iterable):
             assets = [assets]
         self.assets = assets
@@ -653,24 +605,17 @@ class Basket(BaseConstraint):
         self.constraint_assets = self.assets
         super(Basket, self).__init__()
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
-        min_cons, max_cons = [], []
+    def __repr__(self):
+        """Returns a string with information about the constraint.
+        """
+        return "%s(最小权重%s，最大权重%s)" % (self.__class__.__name__,
+                                      self.min_net_exposure,
+                                      self.max_net_exposure)
 
-        long_ix = w_long_s.index.get_indexer(self.assets)
-        short_ix = w_short_s.index.get_indexer(self.assets)
-
-        long_expr = vars_long[long_ix]
-        short_expr = vars_short[short_ix]
-
-        min_cons = [
-            e_l + e_s >= self.min_net_exposure
-            for e_l, e_s in zip(long_expr, short_expr)
-        ]
-        max_cons = [
-            e_l + e_s <= self.max_net_exposure
-            for e_l, e_s in zip(long_expr, short_expr)
-        ]
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+        locs = weight_var_series.index.get_indexer(self.assets)
+        min_cons = [weight_var[loc] >= self.min_net_exposure for loc in locs]
+        max_cons = [weight_var[loc] <= self.max_net_exposure for loc in locs]
         return min_cons + max_cons
 
 
@@ -690,27 +635,17 @@ class Frozen(BaseConstraint):
             asset_or_assets = [asset_or_assets]
         self.asset_or_assets = asset_or_assets
         self.max_error_display = max_error_display
-        self.constraint_assets = self.asset_or_assets
+        self.constraint_assets = pd.Index(self.asset_or_assets)
         super(Frozen, self).__init__()
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
-        assert init_w_s is not None, '固定权重(Frozen)限制期初投资组合不得为空'
-        long_cons, short_cons = [], []
-        init_w = init_w_s[self.asset_or_assets]
-
-        long_w = init_w[init_w >= 0]
-        short_w = init_w[init_w < 0]
-
-        if len(long_w):
-            long_expr = w_long_s.loc[self.asset_or_assets].values
-            long_cons = [e == b for e, b in zip(long_expr, long_w.values)]
-
-        if len(short_w):
-            short_expr = w_short_s.loc[self.asset_or_assets].values
-            short_cons = [e == b for e, b in zip(short_expr, short_w.values)]
-
-        return long_cons + short_cons
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+        assert init_weights is not None, 'Frozen()限制期初投资组合不得为空'
+        constraints = []
+        # 变量位置
+        locs = weight_var_series.index.get_indexer(self.asset_or_assets)
+        for loc, asset in zip(locs, self.asset_or_assets):
+            constraints.append(weight_var[loc] == init_weights[asset])
+        return constraints
 
 
 class ReduceOnly(BaseConstraint):
@@ -721,10 +656,6 @@ class ReduceOnly(BaseConstraint):
     ----------
     asset：Asset
         不得增加头寸的资产
-
-    逻辑说明
-    -------
-    所有指定资产绝对值权重均不得增加，只能减少且不得小于0
     """
 
     def __init__(self, asset_or_assets, max_error_display=10):
@@ -736,40 +667,21 @@ class ReduceOnly(BaseConstraint):
         self.constraint_assets = pd.Index(self.asset_or_assets)
         super(ReduceOnly, self).__init__()
 
-    # 分别控制多空权重
-    # def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-    #                       init_w_s):
-    #     long_cons, short_cons = [], []
-    #     init_w = init_w_s.loc[self.asset_or_assets]
-    #     init_long = init_w[init_w >= 0]
-    #     init_short = init_w[init_w < 0]
-    #     # 如果存在多头reduce限定
-    #     if len(init_long):
-    #         # 表达式减去值
-    #         long_diff = w_long_s.loc[self.asset_or_assets] - init_long
-    #         long_cons = [expr <= 0 for expr in long_diff]
-    #     if len(init_short):
-    #         short_expr = w_short_s.loc[self.asset_or_assets].values
-    #         short_cons = [
-    #             cvx.abs(e) <= cvx.abs(b)
-    #             for e, b in zip(short_expr, init_short.values)
-    #         ]
-    #     return long_cons + short_cons
-
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
-        assert init_w_s is not None, '仅能减少权重限制(ReduceOnly)限制期初投资组合不得为空'
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+        assert init_weights is not None, 'ReduceOnly()期初投资组合不得为空'
         constraints = []
-        bias = 0.00001  # 由于求解器不接受严格不等式，使用偏差微调
-        # 以绝对值来控制
-        init_abs_w = init_w_s[self.asset_or_assets].abs().values
-        if len(init_abs_w):
-            long_expr = w_long_s[self.asset_or_assets].values
-            short_expr = w_short_s[self.asset_or_assets].values
-            constraints = [
-                cvx.abs(e1) + cvx.abs(e2) <= b * (1 - bias)
-                for e1, e2, b in zip(long_expr, short_expr, init_abs_w)
-            ]
+        locs = weight_var_series.index.get_indexer(self.asset_or_assets)
+        for loc, asset in zip(locs, self.asset_or_assets):
+            old_w = init_weights[asset]
+            # 多头权重时，变量不得为空头
+            if old_w >= 0:
+                # 介于[0, old_w]
+                constraints.extend(
+                    [weight_var[loc] <= old_w, weight_var[loc] >= 0])
+            else:
+                # 介于[old_w, 0]
+                constraints.extend(
+                    [weight_var[loc] >= old_w, weight_var[loc] <= 0])
         return constraints
 
 
@@ -792,11 +704,13 @@ class LongOnly(BaseConstraint):
         self.constraint_assets = pd.Index(self.asset_or_assets)
         super(LongOnly, self).__init__()
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
-        # 对特定资产的空头权重表达式限定为大于0
-        vars_w = w_short_s[self.asset_or_assets].tolist()
-        return [expr >= 0 for expr in vars_w]
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+        constraints = []
+        # 对特定资产的权重表达式限定为>=0
+        locs = weight_var_series.index.get_indexer(self.asset_or_assets)
+        for loc in locs:
+            constraints.append(weight_var[loc] >= 0)
+        return constraints
 
 
 class ShortOnly(BaseConstraint):
@@ -809,16 +723,21 @@ class ShortOnly(BaseConstraint):
     """
 
     def __init__(self, asset_or_assets, max_error_display=10):
+        # 如果输入单个资产，转换为可迭代对象
+        if not isinstance(asset_or_assets, Iterable):
+            asset_or_assets = [asset_or_assets]
         self.asset_or_assets = asset_or_assets
         self.max_error_display = max_error_display
         self.constraint_assets = pd.Index(asset_or_assets)
         super(ShortOnly, self).__init__()
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
-        # 对特定资产的多头权重表达式限定为小于0
-        vars_w = w_long_s.loc[self.asset_or_assets].tolist()
-        return [expr <= 0 for expr in vars_w]
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+        constraints = []
+        # 对特定资产的权重表达式限定为<=0
+        locs = weight_var_series.index.get_indexer(self.asset_or_assets)
+        for loc in locs:
+            constraints.append(weight_var[loc] <= 0)
+        return constraints
 
 
 class FixedWeight(BaseConstraint):
@@ -845,12 +764,8 @@ class FixedWeight(BaseConstraint):
         return "%s(限定%s权重为%s)" % (self.__class__.__name__, self.asset,
                                   self.weight)
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
-        if self.weight >= 0:
-            expr = w_long_s[self.asset]
-        else:
-            expr = w_short_s[self.asset]
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+        expr = weight_var_series[self.asset]
         return [expr == self.weight]
 
 
@@ -865,17 +780,21 @@ class CannotHold(BaseConstraint):
     """
 
     def __init__(self, asset_or_assets, max_error_display=10):
+        # 如果输入单个资产，转换为可迭代对象
+        if not isinstance(asset_or_assets, Iterable):
+            asset_or_assets = [asset_or_assets]        
         self.asset_or_assets = asset_or_assets
         self.max_error_display = max_error_display
         self.constraint_assets = pd.Index(asset_or_assets)
         super(CannotHold, self).__init__()
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
-        # 把资产交集部分的表达式设置为0
-        p1 = w_long_s.loc[self.asset_or_assets].tolist()
-        p2 = w_short_s.loc[self.asset_or_assets].tolist()
-        return [con == 0 for con in p1 + p2]
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+        constraints = []
+        # 对特定资产的权重表达式限定为==0
+        locs = weight_var_series.index.get_indexer(self.asset_or_assets)
+        for loc in locs:
+            constraints.append(weight_var[loc] == 0)
+        return constraints
 
 
 class NotExceed(BaseConstraint):
@@ -886,11 +805,6 @@ class NotExceed(BaseConstraint):
     ----------
     limit：float 正数(负数将转换为绝对值)
         资产绝对值权重不得超过此值
-
-    注
-    --
-        当求解最大alpha时，如存在收益率为0的alpha且权重未分配完毕，结果不正确?
-        如随机分配权重，
     """
 
     def __init__(self, limit):
@@ -904,37 +818,34 @@ class NotExceed(BaseConstraint):
         return "%s(所有权重区间[-%s,+%s])" % (self.__class__.__name__, self.limit,
                                         self.limit)
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
-        # 空头变量已经设定为非正
-        # 多头变量已经设定为非负
-        return [
-            vars_long <= self.limit,
-            cvx.abs(vars_short) <= self.limit,
-        ]
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+        constraints = []
+        for i in range(len(weight_var_series)):
+            constraints.extend([
+                weight_var[i] <= self.limit,
+                weight_var[i] >= -self.limit
+            ])
+        return constraints
 
 
 class NotLessThan(BaseConstraint):
     """
-    单个资产的总权重不得低于一个常数
+    单个资产的权重不得低于一个常数
 
     Parameters
     ----------
-    limit：float 正数(负数将转换为绝对值)
-        资产绝对值权重不得低于此值
+    limit：float
+        权重不得低于此值
     """
 
     def __init__(self, limit):
-        limit = abs(limit)
         self.limit = limit
         super(NotLessThan, self).__init__()
 
     def __repr__(self):
         """Returns a string with information about the constraint.
         """
-        return "%s(所有绝对值权重>=%s)" % (self.__class__.__name__, self.limit)
+        return "%s(权重>=%s)" % (self.__class__.__name__, self.limit)
 
-    def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
-                          init_w_s):
-        # return [vars_long >= self.limit, vars_short <= -self.limit]
-        return [vars_long - vars_short >= self.limit]
+    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+        return [weight_var >= self.limit]

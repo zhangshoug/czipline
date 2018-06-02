@@ -1,11 +1,6 @@
 """
 目标模块
-
-假设前提：
-    1. 无论是目标权重或当前权重，在特定时刻，单个资产不得同时存在多头与空头权重，即符号唯一；
-
 """
-
 from abc import ABCMeta, abstractmethod
 
 import logbook
@@ -30,24 +25,49 @@ class ObjectiveBase(object):
         """目标"""
         return NotImplemented
 
-    def make_weights(self, assets):
-        """构造目标权重变量"""
-        n = len(assets)
-        # 目标权重
-        self.new_weights = cvx.Variable(n)
-        # 资产索引(用于调整限定条件权重变量参数位置)
+    def make_weight(self, n, assets):
+        """构造多、空权重双变量"""
+        self.n = len(assets)
+        # 多头权重(数字非负)
+        self.long_w = cvx.Variable(n, nonneg=True)
+        # 空头权重(数字非正)
+        self.short_w = cvx.Variable(n, nonpos=True)
+        # 绝对值权重
+        self.w = self.long_w - self.short_w
+        # 资产索引(用于调整限定条件多空权重变量参数位置)
         self.assets = assets
 
     @property
-    def new_weightseights_series(self):
-        """多头权重表达式序列"""
-        return pd.Series(
-            [self.new_weights[i] for i in range(self.n)], index=self.assets)
+    def weights_series(self):
+        """绝对值权重表达式序列"""
+        return pd.Series([self.w[i] for i in range(self.n)], index=self.assets)
 
     @property
-    def new_weightseights_value(self):
+    def weights_value(self):
+        """绝对值权重值"""
+        return self.weights_series.map(lambda x: round(x.value, 4))
+
+    @property
+    def long_weights_series(self):
+        """多头权重表达式序列"""
+        return pd.Series(
+            [self.long_w[i] for i in range(self.n)], index=self.assets)
+
+    @property
+    def long_weights_value(self):
         """多头权重值"""
-        return self.new_weightseights_series.map(lambda x: round(x.value, 4))
+        return self.long_weights_series.map(lambda x: round(x.value, 4))
+
+    @property
+    def short_weights_series(self):
+        """空头权重表达式序列"""
+        return pd.Series(
+            [self.short_w[i] for i in range(self.n)], index=self.assets)
+
+    @property
+    def short_weights_value(self):
+        """空头权重值"""
+        return self.short_weights_series.map(lambda x: round(x.value, 4))
 
 
 class TargetWeights(ObjectiveBase):
@@ -73,13 +93,14 @@ class TargetWeights(ObjectiveBase):
     def __init__(self, weights):
         check_series_or_dict(weights, 'weights')
         self.weights = pd.Series(weights)
-        self.make_weights(self.weights.index)
+        n = len(weights)
+        self.make_weight(n, self.weights.index)
         super(TargetWeights, self).__init__()
 
     def __repr__(self):
         """Returns a string with information about the constraint.
         """
-        return "%s(n=%s)" % (self.__class__.__name__, len(self.weights))
+        return "%s(%s)" % (self.__class__.__name__, 'weights')
 
     def _expr(self):
         # 目标权重
@@ -88,7 +109,7 @@ class TargetWeights(ObjectiveBase):
         l_w, s_w = np.array(t_w), np.array(t_w)
         l_w[t_w <= 0] = 0.
         s_w[t_w >= 0] = 0.
-        long_err = cvx.sum_squares(self.new_weights - l_w)
+        long_err = cvx.sum_squares(self.long_w - l_w)
         short_err = cvx.sum_squares(self.short_w - s_w)
         return long_err + short_err
 
@@ -125,17 +146,18 @@ class MaximizeAlpha(ObjectiveBase):
     def __init__(self, alphas):
         check_series_or_dict(alphas, 'alphas')
         self.alphas = pd.Series(alphas)
-        self.make_weights(self.alphas.index)
+        n = len(alphas)
+        self.make_weight(n, self.alphas.index)
         super(MaximizeAlpha, self).__init__()
 
     def __repr__(self):
         """Returns a string with information about the constraint.
         """
-        return "%s(n=%s)" % (self.__class__.__name__, len(self.alphas))
+        return "%s(%s)" % (self.__class__.__name__, 'alphas')
 
     def _expr(self):
         alphas = self.alphas.values
-        long_profit = alphas.T * self.new_weights  # 多头加权收益
+        long_profit = alphas.T * self.long_w  # 多头加权收益
         short_profit = alphas.T * self.short_w  # 空头加权收益
         return cvx.sum(long_profit + short_profit)
 
@@ -145,7 +167,7 @@ class MaximizeAlpha(ObjectiveBase):
     #     l_a, s_a = np.array(alphas), np.array(alphas)
     #     l_a[l_a <= 0] = 0.
     #     s_a[s_a >= 0] = 0.
-    #     long_profit = l_a.T * self.new_weights  # 多头加权收益
+    #     long_profit = l_a.T * self.long_w  # 多头加权收益
     #     short_profit = s_a.T * self.short_w  # 空头加权收益
     #     return long_profit + short_profit
 

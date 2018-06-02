@@ -107,8 +107,7 @@ class MaxGrossExposure(BaseConstraint):
 
     def _constraints_list(self, vars_long, vars_short, w_long_s, w_short_s,
                           init_w_s):
-        # return [cvx.sum(vars_long - vars_short) <= self.max_]
-        # w = vars_long - vars_short
+        # w = vars_long + cvx.abs(vars_short)
         # return [cvx.norm(w, 1) <= self.max_]
         return [cvx.sum(vars_long + cvx.abs(vars_short)) <= self.max_]
 
@@ -892,6 +891,11 @@ class NotExceed(BaseConstraint):
     ----------
     limit：float 正数(负数将转换为绝对值)
         资产绝对值权重不得超过此值
+
+    注
+    --
+        当求解最大alpha时，如存在收益率为0的alpha且权重未分配完毕，结果不正确?
+        如随机分配权重，
     """
 
     def __init__(self, limit):
@@ -910,9 +914,10 @@ class NotExceed(BaseConstraint):
         # 空头变量已经设定为非正
         # 多头变量已经设定为非负
         return [
-            vars_long <= self.limit, 
-            vars_short >= -self.limit
+            vars_long <= self.limit,
+            cvx.abs(vars_short) <= self.limit,
         ]
+
 
 class NotLessThan(BaseConstraint):
     """

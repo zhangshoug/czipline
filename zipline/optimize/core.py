@@ -64,7 +64,7 @@ def _run(objective, constraints, current_portfolio):
     }
     cvx_constraints = list(concat(constraint_map.values()))
     prob = cvx.Problem(objective.objective, cvx_constraints)
-    prob.solve()
+    prob.solve() #solver=cvx.ECOS)
     return prob, constraint_map
     # try:
     #     prob.solve()

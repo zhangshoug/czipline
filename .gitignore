@@ -87,8 +87,8 @@ README.ipynb
 src/*.*
 
 zipline/_optimize/*.*
-src/blaze
 
+src/*.*
 cvx
 np
 pd

@@ -88,3 +88,7 @@ src/*.*
 
 zipline/_optimize/*.*
 src/blaze
+
+cvx
+np
+pd

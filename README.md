@@ -276,9 +276,9 @@ def myfunc(context, data):
 
 #### 参考配置
 
-![系统](./images/sys.png)
+![系统](./images/sys_info.png)
 
-+ Ubuntu 17.10
++ Ubuntu 18.04
 + Anaconda 
 + python 3.6
 

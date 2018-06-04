@@ -15,7 +15,6 @@ __all__ = [
     'NotConstrained',
     'MaxGrossExposure',
     'NetExposure',
-    'DollarNeutral',
     'NetGroupExposure',
     'DollarNeutral',
     'NetGroupExposure',
@@ -60,11 +59,11 @@ class BaseConstraint(object):
         weight_var_series:权重表达式序列(以assets为索引)
         init_weights:初始权重值序列(以assets为索引)
         """
-        return self._constraints_list(weight_var, weight_var_series,
+        return self.to_cvxpy(weight_var, weight_var_series,
                                       init_weights)
 
     @abstractmethod
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         """子类完成具体表达式"""
         pass
 
@@ -95,7 +94,7 @@ class MaxGrossExposure(BaseConstraint):
         """
         return "%s(%s)" % (self.__class__.__name__, self.max_)
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         return [cvx.sum(cvx.abs(weight_var)) <= self.max_]
         # return [cvx.norm(cvx.abs(weight_var), 2) <= self.max_]
 
@@ -134,7 +133,7 @@ class NetExposure(BaseConstraint):
         """
         return "%s(%s,%s)" % (self.__class__.__name__, self.min_, self.max_)
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         total = cvx.sum(weight_var)
         return [total >= self.min_, total <= self.max_]
 
@@ -169,15 +168,16 @@ class DollarNeutral(BaseConstraint):
         """
         return "%s(%s)" % (self.__class__.__name__, self.tolerance)
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         # 在原权重中分别找出多头与空头权重序列
         long_w = init_weights[init_weights >= 0]
         short_w = init_weights[init_weights < 0]
 
         # 为使shape一致，需要使用fillna，以0值填充
         common_index = long_w.index.union(short_w.index).unique()
-        long_w = long_w.reindex(common_index).fillna(0)
-        short_w = short_w.reindex(common_index).fillna(0)
+        # 与其值无关
+        # long_w = long_w.reindex(common_index).fillna(0)
+        # short_w = short_w.reindex(common_index).fillna(0)
 
         # 找到涉及到变量的位置
         ix = get_ix(weight_var_series, common_index)
@@ -307,7 +307,7 @@ class NetGroupExposure(BaseConstraint):
             max_weights=pd.Series(index=labels.unique(), data=max_),
         )
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         constraints = []
         labels = self.labels
         groups = self.max_weights.index.union(self.min_weights.index).unique()
@@ -423,7 +423,7 @@ class PositionConcentration(BaseConstraint):
         """
         return PositionConcentration(pd.Series(), pd.Series(), min_, max_)
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         # 限定条件表达式列表
         constraints = []
         d_min = self.default_min_weight
@@ -497,7 +497,7 @@ class FactorExposure(BaseConstraint):
         self.constraint_assets = loadings.index
         super(FactorExposure, self).__init__()
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         min_cons, max_cons = [], []
         loadings = self.loadings  #.loc[weight_var_series.index].dropna()
         ix = get_ix(weight_var_series, self.loadings.index)
@@ -541,7 +541,7 @@ class Pair(BaseConstraint):
         return "%s(%s，%s，对冲比率：%s)" % (self.__class__.__name__, self.long_,
                                       self.short_, self.hedge_ratio)
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         """
         参考原作者方法
         https://github.com/cvxgrp/cvxpy/issues/322
@@ -612,7 +612,7 @@ class Basket(BaseConstraint):
                                       self.min_net_exposure,
                                       self.max_net_exposure)
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         locs = weight_var_series.index.get_indexer(self.assets)
         min_cons = [weight_var[loc] >= self.min_net_exposure for loc in locs]
         max_cons = [weight_var[loc] <= self.max_net_exposure for loc in locs]
@@ -638,7 +638,7 @@ class Frozen(BaseConstraint):
         self.constraint_assets = pd.Index(self.asset_or_assets)
         super(Frozen, self).__init__()
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         assert init_weights is not None, 'Frozen()限制期初投资组合不得为空'
         constraints = []
         # 变量位置
@@ -667,7 +667,7 @@ class ReduceOnly(BaseConstraint):
         self.constraint_assets = pd.Index(self.asset_or_assets)
         super(ReduceOnly, self).__init__()
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         assert init_weights is not None, 'ReduceOnly()期初投资组合不得为空'
         constraints = []
         locs = weight_var_series.index.get_indexer(self.asset_or_assets)
@@ -704,7 +704,7 @@ class LongOnly(BaseConstraint):
         self.constraint_assets = pd.Index(self.asset_or_assets)
         super(LongOnly, self).__init__()
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         constraints = []
         # 对特定资产的权重表达式限定为>=0
         locs = weight_var_series.index.get_indexer(self.asset_or_assets)
@@ -731,7 +731,7 @@ class ShortOnly(BaseConstraint):
         self.constraint_assets = pd.Index(asset_or_assets)
         super(ShortOnly, self).__init__()
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         constraints = []
         # 对特定资产的权重表达式限定为<=0
         locs = weight_var_series.index.get_indexer(self.asset_or_assets)
@@ -764,7 +764,7 @@ class FixedWeight(BaseConstraint):
         return "%s(限定%s权重为%s)" % (self.__class__.__name__, self.asset,
                                   self.weight)
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         expr = weight_var_series[self.asset]
         return [expr == self.weight]
 
@@ -788,7 +788,7 @@ class CannotHold(BaseConstraint):
         self.constraint_assets = pd.Index(asset_or_assets)
         super(CannotHold, self).__init__()
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         constraints = []
         # 对特定资产的权重表达式限定为==0
         locs = weight_var_series.index.get_indexer(self.asset_or_assets)
@@ -818,7 +818,7 @@ class NotExceed(BaseConstraint):
         return "%s(区间[-%s,+%s])" % (self.__class__.__name__, self.limit,
                                         self.limit)
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         constraints = []
         for i in range(len(weight_var_series)):
             constraints.extend([
@@ -847,5 +847,5 @@ class NotLessThan(BaseConstraint):
         """
         return "%s(权重>=%s)" % (self.__class__.__name__, self.limit)
 
-    def _constraints_list(self, weight_var, weight_var_series, init_weights):
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         return [weight_var >= self.limit]

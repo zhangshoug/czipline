@@ -26,12 +26,6 @@ def _check_assets(objective, constraints, current_portfolio):
 
     目的在于防止变量位置与限定输入参数位置不一致，导致优化结果异常
     """
-    # 当前组合所含资产必须全部包含于目标函数资产内
-    if current_portfolio is not None:
-        diff = current_portfolio.index.difference(objective.assets)
-        if len(diff):
-            raise ValueError('当前组合资产{}并不在目标资产列表内'.format(diff))
-
     # 如果单个限定对象的资产不为空，则应包含于目标函数资产内
     for con in constraints:
         if con.constraint_assets is not None:
@@ -41,7 +35,8 @@ def _check_assets(objective, constraints, current_portfolio):
                     con.__class__.__name__, diff))
 
 
-def run_diagnostics(objective, constraint_map):
+def run_diagnostics(objective, new_weights, cvx_objective, constraint_map):
+    info = []
     for class_, cons in constraint_map.items():
         name = class_.__class__.__name__
         for con in cons:
@@ -50,6 +45,7 @@ def run_diagnostics(objective, constraint_map):
                 print('')
             except:
                 print('{}约束无效'.format(name))
+    return info
 
 
 def _run(objective, constraints, current_portfolio):
@@ -68,6 +64,28 @@ def _run(objective, constraints, current_portfolio):
         return prob, constraint_map
     except cvx.SolverError:
         raise OptimizationFailed('存在相互矛盾的限制条件，求解失败')
+
+
+def calculate_new_weights(objective, constraints, current_weights):
+    cvx_objective = objective.to_cvxpy(current_weights)
+    new_weights = objective.new_weights
+    new_weights_series = objective.new_weights_series
+    constraint_map = {
+        c: c.to_cvxpy(new_weights, new_weights_series, current_weights)
+        for c in constraints
+    }
+    cvx_constraints = list(concat(constraint_map.values()))
+
+    problem = cvx.Problem(cvx_objective, cvx_constraints)
+    problem.solve()
+
+    if problem.status == cvx.OPTIMAL:
+        return objective.new_weights_value
+    else:
+        info = run_diagnostics(objective, new_weights, cvx_objective,
+                               constraint_map)
+        raise OptimizationFailed(info)
+
 
 def run_optimization(objective, constraints, current_portfolio=None):
     """
@@ -94,11 +112,9 @@ def run_optimization(objective, constraints, current_portfolio=None):
     zipline.optimize.OptimizationResult
     zipline.optimize.calculate_optimal_portfolio()   
     """
-    # 检查current_portfolio与目标所含assets一致性
-    _check_assets(objective, constraints, current_portfolio)
     assert isinstance(constraints, list), 'constraints应该为列表类型'
-    prob, constraint_map = _run(objective, constraints, current_portfolio)
-    result = OptimizationResult(prob, objective, current_portfolio, constraint_map)
+    prob = _run(objective, constraints, current_portfolio)
+    result = OptimizationResult(prob, objective, current_portfolio)
     return result
 
 

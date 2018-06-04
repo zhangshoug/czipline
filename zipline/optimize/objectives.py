@@ -3,7 +3,6 @@
 
 假设前提：
     1. 无论是目标权重或当前权重，在特定时刻，单个资产不得同时存在多头与空头权重；
-
 """
 
 from abc import ABCMeta, abstractmethod
@@ -27,30 +26,34 @@ class ObjectiveBase(object):
         self.cash_key = 'cash'
         self.digits = digits
 
-    @abstractmethod
-    def _expr(self):
-        """目标"""
-        return NotImplemented
+    def __repr__(self):
+        return "%s(n=%s)" % (self.__class__.__name__, len(self._new_index))
 
-    def make_weights(self, assets):
-        """构造目标权重变量"""
-        n = len(assets)
-        # 目标权重
-        self.new_weights = cvx.Variable(n)
-        # 资产索引(用于调整限定条件权重变量参数位置)
-        self.assets = assets
+    def _make_variable(self, current):
+        if current is None:
+            self._new_index = self._old_index
+        else:
+            self._new_index = self._old_index.union(current.index).unique()
+        n = len(self._new_index)
+        self._new_weights = cvx.Variable(n, name='new_weights')
+
+    @property
+    def new_weights(self):
+        """权重表达式"""
+        return self._new_weights
 
     @property
     def new_weights_series(self):
         """权重表达式序列"""
-        n = len(self.assets)
+        n = len(self._new_index)
         return pd.Series(
-            [self.new_weights[i] for i in range(n)], index=self.assets)
+            [self._new_weights[i] for i in range(n)], index=self._new_index)
 
     @property
     def new_weights_value(self):
         """多头权重值"""
-        return self.new_weights_series.map(lambda x: round(x.value, self.digits))
+        return self.new_weights_series.map(
+            lambda x: round(x.value, self.digits))
 
 
 class TargetWeights(ObjectiveBase):
@@ -75,23 +78,16 @@ class TargetWeights(ObjectiveBase):
 
     def __init__(self, weights):
         check_series_or_dict(weights, 'weights')
-        self.weights = pd.Series(weights)
-        self.make_weights(self.weights.index)
+        self._target_weights = pd.Series(weights)
+        self._old_index = self._target_weights.index
         super(TargetWeights, self).__init__()
 
-    def __repr__(self):
-        """Returns a string with information about the constraint.
-        """
-        return "%s(n=%s)" % (self.__class__.__name__, len(self.weights))
-
-    def _expr(self):
-        # 目标权重
-        err = cvx.sum_squares(self.new_weights - self.weights.values)
-        return err
-
-    @property
-    def objective(self):
-        return cvx.Minimize(self._expr())
+    def to_cvxpy(self, current_weights):
+        self._make_variable(current_weights)
+        self._target_weights = self._target_weights.reindex(
+            self._new_index).fillna(0)
+        err = cvx.sum_squares(self._new_weights - self._target_weights.values)
+        return cvx.Minimize(err)
 
 
 class MaximizeAlpha(ObjectiveBase):
@@ -121,20 +117,12 @@ class MaximizeAlpha(ObjectiveBase):
 
     def __init__(self, alphas):
         check_series_or_dict(alphas, 'alphas')
-        self.alphas = pd.Series(alphas)
-        self.make_weights(self.alphas.index)
+        self._alphas = pd.Series(alphas)
+        self._old_index = self._alphas.index
         super(MaximizeAlpha, self).__init__()
 
-    def __repr__(self):
-        """Returns a string with information about the constraint.
-        """
-        return "%s(n=%s)" % (self.__class__.__name__, len(self.alphas))
-
-    def _expr(self):
-        alphas = self.alphas.values
-        profit = alphas.T * self.new_weights  # 加权收益
-        return cvx.sum(profit)
-
-    @property
-    def objective(self):
-        return cvx.Maximize(self._expr())
+    def to_cvxpy(self, current_weights):
+        self._make_variable(current_weights)
+        self._alphas = self._alphas.reindex(self._new_index).fillna(0)
+        profit = self._alphas.values.T * self._new_weights  # 加权收益
+        return cvx.Maximize(cvx.sum(profit))

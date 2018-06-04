@@ -41,11 +41,10 @@ class OptimizationFailed(Exception):
 
 
 class OptimizationResult():
-    def __init__(self, prob, objective, old_weights,constraint_map):
+    def __init__(self, prob, objective, old_weights):
         self.prob = prob
         self.objective = objective
         self._old_weights = old_weights
-        self.constraint_map = constraint_map
 
     def raise_for_status(self):
         """
@@ -93,27 +92,6 @@ class OptimizationResult():
     def new_weights(self):
         """
         新权重
-        pandas.DataFrame 或 None
-            
-        New optimal weights, or None if the optimization failed.
-
-        """
-        if not self.success:
-            return None
-        long_w = self.objective.long_weights_value
-        short_w = self.objective.short_weights_value
-        return pd.DataFrame(
-            {
-                'long': long_w.values,
-                'short': short_w.values,
-                'total': (long_w - short_w).values
-            },
-            index=long_w.index)
-
-    @property
-    def net_weights(self):
-        """
-        净权重
         pandas.Series 或 None
             
         New optimal weights, or None if the optimization failed.
@@ -121,44 +99,7 @@ class OptimizationResult():
         """
         if not self.success:
             return None
-        long_w = self.objective.long_weights_value
-        short_w = self.objective.short_weights_value
-        return long_w + short_w
-
-    @property
-    def abs_weights(self):
-        """
-        总权重
-        pandas.Series 或 None  
-        New optimal weights, or None if the optimization failed.
-
-        """
-        if not self.success:
-            return None
-        return self.objective.weights_value
-
-    @property
-    def long_weights(self):
-        """
-        多头总权重
-        pandas.Series 或 None
-        New optimal weights, or None if the optimization failed.
-        """
-        if not self.success:
-            return None
-        return self.objective.long_weights_value
-
-    @property
-    def short_weights(self):
-        """
-        空头总权重
-        pandas.Series 或 None
-        New optimal weights, or None if the optimization failed.
-
-        """
-        if not self.success:
-            return None
-        return self.objective.short_weights_value
+        return self.objective.new_weights_value
 
     @property
     def diagnostics(self):

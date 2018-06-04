@@ -34,8 +34,19 @@ Zipline目前有一个免费的[回测平台](https://www.quantopian.com)，可�
 ```bash
 $ git clone https://github.com/liudengfeng/czipline.git
 ```
+##### 建立环境
+
+```bash
+$ conda create -n zipline python=3.6 # 环境名称随意，python版本要求3.6
+```
 
 ##### 安装依赖包
+以下安装需要进入环境
+```bash
+$ source activate zipline # 进入刚才建立的环境 
+$ activate zipline        # windows 进入环境
+```
+
 下载并安装ta-lib包以及数据处理包、统计分析包。转移至项目安装文件所在目录后执行：
 
 参考`talib`[安装方法](https://github.com/mrjbq7/ta-lib)

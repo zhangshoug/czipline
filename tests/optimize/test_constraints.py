@@ -55,13 +55,14 @@ class TestObjectives(unittest.TestCase):
     def check(self, cons_obj, desired_value, desired_weights, init_w_s=None):
         # 基础限制：单个权重不超过0.5，空头不超过-1.0，总体不超过1.5
         obj = MaximizeAlpha(self.alphas)
+        cvx_objective = obj.to_cvxpy(None)
         w = obj.new_weights
         w_s = obj.new_weights_series
         constraints = [
             con for con in cons_obj.gen_constraints(w, w_s, init_w_s)
         ]
         constraints += [cvx.norm(w, 1) <= 1.5, w <= 0.5, w >= -1.0]
-        prob = cvx.Problem(obj.objective, constraints)
+        prob = cvx.Problem(cvx_objective, constraints)
         prob.solve()
         # print('求解状态', prob.status)
         # print('最优解', prob.value)

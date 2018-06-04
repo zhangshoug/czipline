@@ -35,7 +35,6 @@ Zipline目前有一个免费的[回测平台](https://www.quantopian.com)，可�
 $ git clone https://github.com/liudengfeng/czipline.git
 ```
 ##### 建立环境
-
 ```bash
 $ conda create -n zipline python=3.6 # 环境名称随意，python版本要求3.6
 ```
@@ -79,7 +78,7 @@ $ python setup.py develop
 
 
 ```bash
-$ init-stock-data # 初始化基础数据。耗时大约4小时(主要下载日线及最近一个月的分时交易数据。对数据量小，但抓取网页数据耗时长的，整理好的数据存放在github，初始化时会从该处提取，节约初始化时间。)
+$ init-stock-data # 初始化基础数据。耗时大约24小时(主要下载日线及最近一个月的分时交易数据。对数据量小，但抓取网页数据耗时长的，整理好的数据存放在github，初始化时会从该处提取，节约初始化时间。)
 
 $ zipline ingest # 转换日线数据，耗时约10分钟
 

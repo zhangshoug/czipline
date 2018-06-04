@@ -89,6 +89,6 @@ src/*.*
 zipline/_optimize/*.*
 
 src/*.*
-cvx
-np
+./cvx
+./np
 pd

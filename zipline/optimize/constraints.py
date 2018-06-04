@@ -159,7 +159,8 @@ class DollarNeutral(BaseConstraint):
     """
 
     def __init__(self, tolerance=0.0001):
-        assert tolerance < 0.01, 'tolerance太大没有意义'
+        # 不应限制
+        # assert tolerance < 0.01, 'tolerance太大没有意义'
         self.tolerance = tolerance
         super(DollarNeutral, self).__init__()
 

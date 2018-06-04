@@ -193,6 +193,7 @@ class OptimizationResult():
         """
         Print diagnostic information gathered during the optimization.
         """
+        status = self.prob.status
         if status == 'unbounded':
             info = '问题无界。如没有限制总权重，求解最大alpha时，目标权重无上界'
         elif status == 'infeasible':

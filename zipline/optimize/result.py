@@ -98,13 +98,13 @@ def parse_constraint_range(constraint):
         return (None, None, None)
     else:
         if isinstance(constraint, cvx.Zero):
-            min_ = -c_num
-            max_ = -c_num  #* c_sign #* v_sign
+            min_ = c_num * -1
+            max_ = c_num * -1 #* c_sign #* v_sign
         elif isinstance(constraint, cvx.NonPos):
             if v_sign == -1:
                 min_ = c_num
             else:
-                max_ = -c_num
+                max_ = c_num * -1
     return (id_num, min_, max_)
 
 
@@ -152,7 +152,7 @@ def run_diagnostics(objective, new_weights, cvx_objective, constraint_map):
                 zip(limit_as.values(), limit_bs.values())):
             if check_violate(limit_a, limit_b):
                 asset = asstes[i]
-                msg = '{}不可能同时满足{}和{}\n'.format(asset, k1, k2)
+                msg = '{}不可能同时满足<{}>和<{}>约束\n'.format(asset, k1, k2)
                 info += msg
     return info
 

@@ -3,7 +3,7 @@
 """
 from cswd.common.utils import ensure_list
 
-from .core import symbols
+from .core import symbols, to_tdates
 
 
 def select_output_by(output, start=None, end=None, assets=None):
@@ -35,6 +35,7 @@ def select_output_by(output, start=None, end=None, assets=None):
                                 *ST油服(600871) 	2.0316    
     """
     nlevels = output.index.nlevels
+    _, start, end = to_tdates(start, end)
     if nlevels != 2:
         raise ValueError('输入数据框只能是run_pipeline输出结果，MultiIndex DataFrame')
     if start:
@@ -43,6 +44,6 @@ def select_output_by(output, start=None, end=None, assets=None):
         output = output.loc[:end]
     if assets is not None:
         assets = symbols(assets)
-        return output[assets]
+        return output.loc[(slice(None), assets), :]
     else:
         return output

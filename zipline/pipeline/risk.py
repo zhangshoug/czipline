@@ -142,15 +142,15 @@ class ShortTermReversal(CustomFactor, SingleInputMixin):
         diffs = diff(closes, axis=0)
         ups = nanmean(clip(diffs, 0, inf), axis=0)
         downs = abs(nanmean(clip(diffs, -inf, 0), axis=0))
-        return zscore(-evaluate(
+        tmp = -evaluate(
             "100 - (100 / (1 + (ups / downs)))",
             local_dict={
                 'ups': ups,
                 'downs': downs
             },
             global_dict={},
-            out=out,
-        ))
+        )
+        out[:] = zscore(tmp)
 
 
 class Volatility(CustomFactor):

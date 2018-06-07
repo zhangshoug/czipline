@@ -21,7 +21,6 @@ from zipline.pipeline.factors import RSI
 from zipline.pipeline.fundamentals import Fundamentals
 from zipline.research import to_tdates
 
-file_dir = '/home/ldf/pkg_source/czipline/docs/介绍材料/操作手册/学习/'
 logger = logbook.Logger('计算风险因子')
 PPY = 244  # 每年交易天数
 PPM = 21  # 每月交易天数

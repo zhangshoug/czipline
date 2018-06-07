@@ -21,7 +21,9 @@ from .mixins import SingleInputMixin
 
 __all__ = [
     'Momentum', 'Value', 'Size', 'ShortTermReversal', 'Volatility',
-    'BasicMaterials', 'ConsumerCyclical'
+    'BasicMaterials', 'ConsumerCyclical', 'FinancialServices', 'RealEstate',
+    'ConsumerDefensive', 'HealthCare', 'Utilities', 'CommunicationServices',
+    'Energy', 'Industrials', 'Technology'
 ]
 
 PPY = 244  # 每年交易天数
@@ -279,21 +281,22 @@ def risk_loading_pipeline():
     pipeline:Pipeline
         包含风险模型中每个因子的风险加载的pipeline
     """
-    return Pipeline(columns={
-        'BasicMaterials': BasicMaterials(),
-        'ConsumerCyclical': ConsumerCyclical(),
-        'FinancialServices': FinancialServices(),
-        'RealEstate': RealEstate(),
-        'ConsumerDefensive': ConsumerDefensive(),
-        'HealthCare': HealthCare(),
-        'Utilities': Utilities(),
-        'CommunicationServices': CommunicationServices(),
-        'Energy': Energy(),
-        'Industrials': Industrials(),
-        'Technology': Technology(),
-        'Momentum': Momentum(),
-        'Value': Value(),
-        'Size': Size(),
-        'ShortTermReversal': ShortTermReversal(),
-        'Volatility': Volatility(),
-    })
+    return Pipeline(
+        columns={
+            'BasicMaterials': BasicMaterials(),
+            'ConsumerCyclical': ConsumerCyclical(),
+            'FinancialServices': FinancialServices(),
+            'RealEstate': RealEstate(),
+            'ConsumerDefensive': ConsumerDefensive(),
+            'HealthCare': HealthCare(),
+            'Utilities': Utilities(),
+            'CommunicationServices': CommunicationServices(),
+            'Energy': Energy(),
+            'Industrials': Industrials(),
+            'Technology': Technology(),
+            'Momentum': Momentum(),
+            'Value': Value(),
+            'Size': Size(),
+            'ShortTermReversal': ShortTermReversal(),
+            'Volatility': Volatility(),
+        })

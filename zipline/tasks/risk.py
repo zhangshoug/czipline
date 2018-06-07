@@ -122,12 +122,11 @@ def _compute(factor_df, pct_df):
     z_df = (fs_df - fs_df.mean()) / fs_df.std()
     f_style = []
     epsilon_style = []
-    y = epsilon_sect.values
+    y = np.array(epsilon_sect.values)
 
     # 使用主题因子回归部门收益率残差
     for c in STYLE_COLUMNS:
-        x = z_df[c].values
-        print(x)
+        x = np.array(z_df[c].values)
         slope = stats.linregress(x, y)[0]
         err = y - slope * x
         epsilon_style.append(err)
@@ -150,7 +149,7 @@ def make_pipeline():
             'value': e / tmv,
             'reversal': RSI()
         },
-        screen=t_stocks)  # 使用前20测试
+        screen=t_stocks)
 
 
 def initialize(context):

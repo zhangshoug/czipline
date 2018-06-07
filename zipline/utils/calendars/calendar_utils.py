@@ -62,7 +62,7 @@ class TradingCalendarDispatcher(object):
         self._calendar_factories = calendar_factories
         self._aliases = aliases
 
-    def get_calendar(self, name):
+    def get_calendar(self, name='SZSH'):
         """
         Retrieves an instance of an TradingCalendar whose name is given.
 

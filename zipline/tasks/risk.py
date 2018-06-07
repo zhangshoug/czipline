@@ -59,6 +59,7 @@ STYLE_COLUMNS = ['momentum', 'size', 'value', 'reversal', 'volatility']
 
 
 def matrix_linregress(X, Y):
+    """矩阵回归"""
     pass
 
 
@@ -125,12 +126,11 @@ def _compute_loading(factor_df, pct_df):
     beta_df = pd.DataFrame(index=asset_index, columns=beta_columns)
     # 主题因子
     fs_df = pd.DataFrame(index=asset_index, columns=STYLE_COLUMNS)
-    # 部门收益率残差
-    epsilon_sect = pd.Series(index=asset_index)
+
     # 部门回归及辅助计算
     for asset, sector_code in factor_df['sector'].items():
         # 居然有股票没有部门代码的?暂且跳过，事后再检查
-        if not sector_code:
+        if sector_code is np.nan:
             continue
         # 此处不适宜使用矩阵回归，需分资产处理
         f = _index_return().loc[date_index, int(sector_code)].fillna(0.0)
@@ -143,8 +143,8 @@ def _compute_loading(factor_df, pct_df):
         volatility = r.iloc[v_start_loc:v_end_loc].std()
 
         # 部门回归
-        beta_vec, err = sector_linregress(k, f.values, r.values)
-        epsilon_sect.loc[asset] = err
+        beta_vec, _ = sector_linregress(k, f.values, r.values)
+        # epsilon_sect.loc[asset] = err
         beta_df.loc[asset, list(SECTOR_MAPS.keys())] = beta_vec
         fs_df.loc[asset, 'momentum'] = momentum
         fs_df.loc[asset, 'volatility'] = volatility
@@ -165,7 +165,7 @@ def _compute_loading(factor_df, pct_df):
 def make_pipeline():
     """部门编码及主题指标"""
     # 这里主要目的是限制计算量，最终要改为0， 代表当天交易的股票
-    t_stocks = USEquityPricing.volume.latest >= 0 #100000000.
+    t_stocks = USEquityPricing.volume.latest >= 50000000
     e = Fundamentals.balance_sheet.A107.latest
     tmv = USEquityPricing.tmv.latest
     return Pipeline(

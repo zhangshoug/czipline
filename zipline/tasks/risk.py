@@ -1,3 +1,6 @@
+import os
+from functools import lru_cache
+
 import logbook
 import numpy as np
 import pandas as pd
@@ -12,6 +15,7 @@ from zipline.pipeline.factors import RSI
 from zipline.pipeline.fundamentals import Fundamentals
 from zipline.research import to_tdates
 
+file_dir = '/home/ldf/pkg_source/czipline/docs/介绍材料/操作手册/学习/'
 logger = logbook.Logger('计算风险因子')
 PPY = 244  # 每年交易天数
 PPM = 21  # 每月交易天数
@@ -48,6 +52,10 @@ SECTOR_INDEX_MAPS = {
 STYLE_COLUMNS = ['momentum', 'size', 'value', 'reversal', 'volatility']
 
 
+def matrix_linregress(X, Y):
+    pass
+
+
 def sector_linregress(k, x, y):
     """部门线性回归
 
@@ -62,6 +70,25 @@ def sector_linregress(k, x, y):
     # 必须减去1(向量从0开始)
     beta[k - 1] = slope
     return beta, err[-1]  # 只需要最后一项
+
+
+@lru_cache()
+def _index_return():
+    """
+    与行业相关指数所有日期收益率表
+
+    以行业keys为列
+    """
+    df = pd.DataFrame(columns=SECTOR_INDEX_MAPS.keys())
+    for i, k in enumerate(SECTOR_INDEX_MAPS.keys()):
+        temp = get_cn_benchmark_returns(SECTOR_INDEX_MAPS[k])
+        if i == 0:
+            df[k] = temp.values
+        else:
+            new_index = df.index.union(temp.index).unique()
+            df = df.reindex(new_index).fillna(0.0)
+            df[k] = temp.reindex(new_index).fillna(0.0)
+    return df
 
 
 def _compute(factor_df, pct_df):
@@ -86,19 +113,17 @@ def _compute(factor_df, pct_df):
     asset_index = factor_df.index
     # 日期Index
     date_index = pct_df.index
-    # 存储beta值(len(assets) * 11)
-    beta_df = pd.DataFrame(index=asset_index, columns=SECTOR_MAPS.keys())
+    # 存储beta值(len(assets) * 11 + 5)
+    beta_columns = list(SECTOR_MAPS.keys()) + STYLE_COLUMNS
+    beta_df = pd.DataFrame(index=asset_index, columns=beta_columns)
     # 主题因子
     fs_df = pd.DataFrame(index=asset_index, columns=STYLE_COLUMNS)
     # 部门收益率残差
     epsilon_sect = pd.Series(index=asset_index)
     # 部门回归及辅助计算
     for asset, sector_code in factor_df['sector'].items():
-        index_code = SECTOR_INDEX_MAPS[int(sector_code)]
-        # 重整指数收益率
-        index_ret = get_cn_benchmark_returns(index_code)
-
-        f = index_ret.reindex(date_index).fillna(0.0)
+        # 此处不适宜使用矩阵回归，需分资产处理
+        f = _index_return().loc[date_index, int(sector_code)].fillna(0.0)
         r = pct_df[asset]
         k = SECTOR_MAPS[int(sector_code)]
         # 计算股票动量指标
@@ -110,35 +135,38 @@ def _compute(factor_df, pct_df):
         # 部门回归
         beta_vec, err = sector_linregress(k, f.values, r.values)
         epsilon_sect.loc[asset] = err
-        beta_df.loc[asset, :] = beta_vec
+        beta_df.loc[asset, list(SECTOR_MAPS.keys())] = beta_vec
         fs_df.loc[asset, 'momentum'] = momentum
         fs_df.loc[asset, 'volatility'] = volatility
-        logger.info('日期：{} 股票:{}'.format(date_index[-1].strftime('%Y-%m-%d'),
+        logger.info('日期：{} 股票:{}'.format(date_index[-1].strftime(r'%Y-%m-%d'),
                                          asset.symbol))
     # Z分数
     fs_df.loc[asset_index, 'size'] = factor_df.loc[asset_index, 'size']
     fs_df.loc[asset_index, 'value'] = factor_df.loc[asset_index, 'value']
     fs_df.loc[asset_index, 'reversal'] = factor_df.loc[asset_index, 'reversal']
     z_df = (fs_df - fs_df.mean()) / fs_df.std()
+    # print(z_df)
+    print(epsilon_sect)
     f_style = []
-    epsilon_style = []
-    y = np.array(epsilon_sect.values)
-
+    # epsilon_style = []
+    y = [x for x in epsilon_sect.values]
+    # 这里可以使用矩阵回归(待完成)
     # 使用主题因子回归部门收益率残差
     for c in STYLE_COLUMNS:
-        x = np.array(z_df[c].values)
+        # 奇怪，转换为列表才行?
+        x = [x for x in z_df[c].values]
         slope = stats.linregress(x, y)[0]
-        err = y - slope * x
-        epsilon_style.append(err)
-        print(slope)
-        # f_style.append(slope)
-    # print(f_style)
-    return fs_df, epsilon_sect
+        # err = epsilon_sect - slope * z_df[c]
+        f_style.append(slope)
+        # epsilon_style.append(err)
+    # print(beta_df)
+    return beta_df
 
 
 def make_pipeline():
     """部门编码及主题指标"""
-    t_stocks = USEquityPricing.volume.latest >= 200000000.
+    # 这里主要目的是限制计算量，最终要改为0， 代表当天交易的股票
+    t_stocks = USEquityPricing.volume.latest >= 100000000.
     e = Fundamentals.balance_sheet.A107.latest
     tmv = USEquityPricing.tmv.latest
     return Pipeline(
@@ -161,7 +189,7 @@ def handle_data(context, data):
         context.stocks, fields="close", bar_count=2 * PPY + 1, frequency="1d")
     # 获取2年收益率数据
     rets = prices.pct_change(1).iloc[1:]
-    fs_df, errors = _compute(context.pipeline_results, rets)
+    beta_df = _compute(context.pipeline_results, rets)
     # print(fs_df.tail())
 
 

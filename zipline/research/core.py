@@ -4,19 +4,22 @@
     2. 测试
 """
 import os
-import pandas as pd
 from collections import Iterable
 
-from cswd.common.utils import sanitize_dates, data_root, ensure_list
-from zipline import run_algorithm
+import pandas as pd
+
+from cswd.common.utils import data_root, ensure_list, sanitize_dates
+from zipline.utils.calendars import get_calendar
+# from zipline import run_algorithm
 from zipline.assets import Asset
 from zipline.assets._assets import Equity
-from zipline.pipeline import Pipeline
-from zipline.pipeline.engine import SimplePipelineEngine
-from zipline.pipeline.data import USEquityPricing
-from zipline.pipeline.loaders import USEquityPricingLoader
-from zipline.pipeline.fundamentals.reader import Fundamentals
 from zipline.data.bundles.core import load
+from zipline.data.data_portal import DataPortal
+from zipline.pipeline import Pipeline
+from zipline.pipeline.data import USEquityPricing
+from zipline.pipeline.engine import SimplePipelineEngine
+from zipline.pipeline.fundamentals.reader import Fundamentals
+from zipline.pipeline.loaders import USEquityPricingLoader
 from zipline.pipeline.loaders.blaze import global_loader
 
 bundle = 'cndaily'  # 使用测试集时，更改为cntdaily。加快运行速度
@@ -25,6 +28,15 @@ bundle_data = load(bundle)
 
 pipeline_loader = USEquityPricingLoader(bundle_data.equity_daily_bar_reader,
                                         bundle_data.adjustment_reader)
+
+trading_calendar = get_calendar()
+
+data_portal = DataPortal(
+    bundle_data.asset_finder,
+    trading_calendar,
+    trading_calendar.first_session,
+    equity_daily_reader=bundle_data.equity_daily_bar_reader,
+    adjustment_reader=bundle_data.adjustment_reader)
 
 
 def choose_loader(column):
@@ -104,50 +116,94 @@ def run_pipeline(pipe, start, end):
     return df
 
 
-def _history(assets,
-             start,
-             end,
-             frequency,
-             field,
-             symbol_reference_date=None,
-             start_offset=0):
-    valid_fields = ('open', 'high', 'low', 'close', 'price', 'volume')
-    msg = '只接受单一字段，有效字段为{}'.format(valid_fields)
-    assert isinstance(field, str), msg
-    if frequency == 'daily':
-        frequency = '1d'
-        bundle = 'cndaily'
-    else:
-        frequency = '1m'
-        bundle = 'cnminutely'
-    dates, start_date, end_date = to_tdates(start, end)
-    if start_offset:
-        start_date -= start_offset * dates.freq
-    start_loc = dates.get_loc(start_date)
-    end_loc = dates.get_loc(end_date)
-    bar_count = end_loc - start_loc + 1
-    data_dir = data_root('webcache/history')
-    file_path = os.path.join(data_dir, '{}.pkl'.format(field))
+# def _history(assets,
+#              start,
+#              end,
+#              frequency,
+#              field,
+#              symbol_reference_date=None,
+#              start_offset=0):
+#     valid_fields = ('open', 'high', 'low', 'close', 'price', 'volume')
+#     msg = '只接受单一字段，有效字段为{}'.format(valid_fields)
+#     assert isinstance(field, str), msg
+#     if frequency == 'daily':
+#         frequency = '1d'
+#         bundle = 'cndaily'
+#     else:
+#         frequency = '1m'
+#         bundle = 'cnminutely'
+#     dates, start_date, end_date = to_tdates(start, end)
+#     if start_offset:
+#         start_date -= start_offset * dates.freq
+#     start_loc = dates.get_loc(start_date)
+#     end_loc = dates.get_loc(end_date)
+#     bar_count = end_loc - start_loc + 1
+#     data_dir = data_root('webcache/history')
+#     file_path = os.path.join(data_dir, '{}.pkl'.format(field))
 
-    def initialize(context):
-        context.stocks = symbols(assets, symbol_reference_date)
+#     def initialize(context):
+#         context.stocks = symbols(assets, symbol_reference_date)
 
-    def handle_data(context, data):
-        history = data.history(context.stocks, field, bar_count, frequency)
-        history.to_pickle(file_path)
+#     def handle_data(context, data):
+#         history = data.history(context.stocks, field, bar_count, frequency)
+#         history.to_pickle(file_path)
 
-    # 只需要在最后一个交易日来运行
-    run_algorithm(
-        end_date,
-        end_date,
-        initialize,
-        100000,
-        handle_data=handle_data,
-        bundle=bundle,
-        bm_symbol='000300')
+#     # 只需要在最后一个交易日来运行
+#     run_algorithm(
+#         end_date,
+#         end_date,
+#         initialize,
+#         100000,
+#         handle_data=handle_data,
+#         bundle=bundle,
+#         bm_symbol='000300')
 
-    # 判断传入asset数量
-    return pd.read_pickle(file_path)
+#     # 判断传入asset数量
+#     return pd.read_pickle(file_path)
+
+# def prices(assets,
+#            start,
+#            end,
+#            frequency='daily',
+#            price_field='price',
+#            symbol_reference_date=None,
+#            start_offset=0):
+#     """
+#     获取指定股票期间收盘价(复权处理)
+#     Parameters:
+
+#         assets (int/str/Asset or iterable of same)
+#             Identifiers for assets to load. Integers are interpreted as sids.
+#             Strings are interpreted as symbols.
+#         start (str or pd.Timestamp)
+#             Start date of data to load.
+#         end (str or pd.Timestamp)
+#             End date of data to load.
+#         frequency ({'minute', 'daily'}, optional)
+#             Frequency at which to load data. Default is ‘daily’.
+#         price_field ({'open', 'high', 'low', 'close', 'price'}, optional)
+#             Price field to load. ‘price’ produces the same data as ‘close’,
+#             but forward-fills over missing data. Default is ‘price’.
+#         symbol_reference_date (pd.Timestamp, optional)
+#             Date as of which to resolve strings as tickers. Default is the current day.
+#         start_offset (int, optional)
+#             Number of periods before start to fetch. Default is 0.
+#             This is most often useful for calculating returns.
+
+#     Returns:
+
+#     prices (pd.Series or pd.DataFrame)
+#         Pandas object containing prices for the requested asset(s) and dates.
+
+#     Data is returned as a pd.Series if a single asset is passed.
+
+#     Data is returned as a pd.DataFrame if multiple assets are passed.
+#     """
+#     valid_fields = ('open', 'high', 'low', 'close', 'price')
+#     msg = '只接受单一字段，有效字段为{}'.format(valid_fields)
+#     assert isinstance(price_field, str), msg
+#     return _history(assets, start, end, frequency, price_field,
+#                     symbol_reference_date, start_offset)
 
 
 def prices(assets,
@@ -188,11 +244,27 @@ def prices(assets,
 
     Data is returned as a pd.DataFrame if multiple assets are passed.   
     """
-    valid_fields = ('open', 'high', 'low', 'close', 'price')
+    msg = 'frequency只能选daily'
+    assert frequency == 'daily', msg
+
+    valid_fields = ('open', 'high', 'low', 'close', 'price', 'volume',
+                    'amount', 'cmv', 'tmv', 'total_share', 'turnover')
     msg = '只接受单一字段，有效字段为{}'.format(valid_fields)
     assert isinstance(price_field, str), msg
-    return _history(assets, start, end, frequency, price_field,
-                    symbol_reference_date, start_offset)
+
+    dates, start_date, end_date = to_tdates(start, end)
+
+    if start_offset:
+        start_date -= start_offset * dates.freq
+
+    start_loc = dates.get_loc(start_date)
+    end_loc = dates.get_loc(end_date)
+    bar_count = end_loc - start_loc + 1
+
+    assets = symbols(assets, symbol_reference_date=symbol_reference_date)
+
+    return data_portal.get_history_window(assets, end_date, bar_count, '1d',
+                                          price_field, frequency)
 
 
 def returns(assets,
@@ -280,5 +352,5 @@ def volumes(assets,
     Data is returned as a pd.DataFrame if multiple assets are passed.
     """
     field = 'amount' if use_amount else 'volume'
-    return _history(assets, start, end, frequency, field,
-                    symbol_reference_date, start_offset)
+    return prices(assets, start, end, frequency, field, symbol_reference_date,
+                  start_offset)

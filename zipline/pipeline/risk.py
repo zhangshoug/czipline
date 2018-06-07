@@ -14,11 +14,15 @@ from zipline.utils.math_utils import (nanargmax, nanargmin, nanmax, nanmean,
 from .data import USEquityPricing
 from .factors import RSI, CustomFactor
 from .factors.factor import zscore
+from .factors.statistical import vectorized_beta
 from .fundamentals import Fundamentals
 from .pipeline import Pipeline
 from .mixins import SingleInputMixin
 
-__all__ = ['Momentum', 'Value', 'Size', 'ShortTermReversal', 'Volatility']
+__all__ = [
+    'Momentum', 'Value', 'Size', 'ShortTermReversal', 'Volatility',
+    'BasicMaterials', 'ConsumerCyclical'
+]
 
 PPY = 244  # 每年交易天数
 PPM = 21  # 每月交易天数
@@ -60,23 +64,121 @@ def _index_return():
 
     以行业keys为列
     """
-    df = pd.DataFrame(columns=SECTOR_INDEX_MAPS.keys())
-    for i, k in enumerate(SECTOR_INDEX_MAPS.keys()):
-        temp = get_cn_benchmark_returns(SECTOR_INDEX_MAPS[k])
-        if i == 0:
-            df[k] = temp.values
-        else:
-            new_index = df.index.union(temp.index).unique()
-            df = df.reindex(new_index).fillna(0.0)
-            df[k] = temp.reindex(new_index).fillna(0.0)
-    return df
+    dfs = []
+    for k in SECTOR_INDEX_MAPS.keys():
+        dfs.append(get_cn_benchmark_returns(SECTOR_INDEX_MAPS[k]))
+    df = pd.concat(dfs, axis=1)
+    df.columns = SECTOR_INDEX_MAPS.keys()
+    return df.fillna(0.0)
 
 
-class BasicMaterials(CustomFactor):
+class SectorBase(CustomFactor):
+    """
+    Risk Model loadings 基础类
+    """
+    inputs = [USEquityPricing.close, Fundamentals.info.sector_code]
+    window_length = 24 * PPM + 1
+    sector_code = 101
+
+    def compute(self, today, assets, out, closes, scs):
+        # 找出行业分类代码为101的资产序号
+        s_code = scs[-1].astype(int)
+        zero_locs = np.nonzero(s_code != self.sector_code)[0]
+        locs = np.nonzero(s_code == self.sector_code)[0]
+        # 所处行业为基本材料的股票收益率
+        all_returns = np.diff(closes[:, locs], axis=0) / closes[1:, locs]
+
+        # 行业指数收益率
+        target_returns = _index_return().loc[:today, self.sector_code].iloc[
+            -self.window_length + 1:].fillna(0.0).values
+        shape = (self.window_length - 1, 1)
+        target_returns = target_returns.reshape(shape)
+
+        allowed_missing_count = int(self.window_length * 0.25)
+        temp = vectorized_beta(
+            dependents=all_returns,
+            independent=target_returns,
+            allowed_missing=allowed_missing_count,
+        )
+        out[locs] = temp
+        out[zero_locs] = 0.0
+
+
+class BasicMaterials(SectorBase):
     """
     Risk Model loadings for the basic materials sector.
     """
-    sector = Fundamentals.info.sector_code.latest
+    sector_code = 101
+
+
+class ConsumerCyclical(SectorBase):
+    """
+    Risk Model loadings for the consumer cyclical sector.
+    """
+    sector_code = 102
+
+
+class FinancialServices(SectorBase):
+    """
+    Risk Model loadings for the financial services sector.
+    """
+    sector_code = 103
+
+
+class RealEstate(SectorBase):
+    """
+    Risk Model loadings for the real estate sector.
+    """
+    sector_code = 104
+
+
+class ConsumerDefensive(SectorBase):
+    """
+    Risk Model loadings for the consumer defensive sector.
+    """
+    sector_code = 205
+
+
+class HealthCare(SectorBase):
+    """
+    Risk Model loadings for the health care sector.
+    """
+    sector_code = 206
+
+
+class Utilities(SectorBase):
+    """
+    Risk Model loadings for the utilities sector.
+    """
+    sector_code = 207
+
+
+class CommunicationServices(SectorBase):
+    """
+    Risk Model loadings for the communication services sector.
+    """
+    sector_code = 308
+
+
+class Energy(SectorBase):
+    """
+    Risk Model loadings for the communication energy sector.
+    """
+    sector_code = 309
+
+
+class Industrials(SectorBase):
+    """
+    Risk Model loadings for the industrials sector.
+    """
+    sector_code = 310
+
+
+class Technology(SectorBase):
+    """
+    Risk Model loadings for the technology sector.
+    """
+    sector_code = 311
 
 
 class Momentum(CustomFactor):
@@ -164,7 +266,7 @@ class Volatility(CustomFactor):
     window_length = 6 * PPM
 
     def compute(self, today, assets, out, closes):
-        r = (np.diff(closes, axis=0) / closes[1:]) - 1
+        r = np.diff(closes, axis=0) / closes[1:]
         out[:] = zscore(r.std(axis=0))
 
 

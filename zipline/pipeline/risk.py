@@ -23,7 +23,7 @@ __all__ = [
     'Momentum', 'Value', 'Size', 'ShortTermReversal', 'Volatility',
     'BasicMaterials', 'ConsumerCyclical', 'FinancialServices', 'RealEstate',
     'ConsumerDefensive', 'HealthCare', 'Utilities', 'CommunicationServices',
-    'Energy', 'Industrials', 'Technology'
+    'Energy', 'Industrials', 'Technology', 'risk_loading_pipeline'
 ]
 
 PPY = 244  # 每年交易天数

@@ -1,3 +1,9 @@
+"""
+此模块内容要放入到～/pkg_source/czipline/zipline/pipeline/risk.py
+
+且更改为pipeline
+"""
+
 import os
 from functools import lru_cache
 
@@ -91,7 +97,7 @@ def _index_return():
     return df
 
 
-def _compute(factor_df, pct_df):
+def _compute_loading(factor_df, pct_df):
     """
     辅助计算
 
@@ -102,6 +108,7 @@ def _compute(factor_df, pct_df):
 
     返回
     ----
+    m个股票16因子列数据框
     """
     # 动量位置
     m_start_loc = -12 * PPM + 1
@@ -122,6 +129,9 @@ def _compute(factor_df, pct_df):
     epsilon_sect = pd.Series(index=asset_index)
     # 部门回归及辅助计算
     for asset, sector_code in factor_df['sector'].items():
+        # 居然有股票没有部门代码的?暂且跳过，事后再检查
+        if not sector_code:
+            continue
         # 此处不适宜使用矩阵回归，需分资产处理
         f = _index_return().loc[date_index, int(sector_code)].fillna(0.0)
         r = pct_df[asset]
@@ -145,28 +155,17 @@ def _compute(factor_df, pct_df):
     fs_df.loc[asset_index, 'value'] = factor_df.loc[asset_index, 'value']
     fs_df.loc[asset_index, 'reversal'] = factor_df.loc[asset_index, 'reversal']
     z_df = (fs_df - fs_df.mean()) / fs_df.std()
-    # print(z_df)
-    print(epsilon_sect)
-    f_style = []
-    # epsilon_style = []
-    y = [x for x in epsilon_sect.values]
-    # 这里可以使用矩阵回归(待完成)
-    # 使用主题因子回归部门收益率残差
-    for c in STYLE_COLUMNS:
-        # 奇怪，转换为列表才行?
-        x = [x for x in z_df[c].values]
-        slope = stats.linregress(x, y)[0]
-        # err = epsilon_sect - slope * z_df[c]
-        f_style.append(slope)
-        # epsilon_style.append(err)
-    # print(beta_df)
+
+    # 赋值
+    beta_df.loc[asset_index, STYLE_COLUMNS] = z_df.loc[asset_index, STYLE_COLUMNS]
+
     return beta_df
 
 
 def make_pipeline():
     """部门编码及主题指标"""
     # 这里主要目的是限制计算量，最终要改为0， 代表当天交易的股票
-    t_stocks = USEquityPricing.volume.latest >= 100000000.
+    t_stocks = USEquityPricing.volume.latest >= 0 #100000000.
     e = Fundamentals.balance_sheet.A107.latest
     tmv = USEquityPricing.tmv.latest
     return Pipeline(
@@ -189,14 +188,17 @@ def handle_data(context, data):
         context.stocks, fields="close", bar_count=2 * PPY + 1, frequency="1d")
     # 获取2年收益率数据
     rets = prices.pct_change(1).iloc[1:]
-    beta_df = _compute(context.pipeline_results, rets)
-    # print(fs_df.tail())
+    beta_df = _compute_loading(context.pipeline_results, rets)
+    t0 = rets.index[-1]
+    t1 = context.get_datetime('Asia/Shanghai')
+    print('回测日期', t1)
+    print('计算日期',t0)
+    print(beta_df.tail())
 
 
 def before_trading_start(context, data):
     # 获取pipeline运行结果
     results = pipeline_output('factors')
-    t = context.get_datetime('Asia/Shanghai')
 
     # 存储结果到上下文
     context.pipeline_results = results

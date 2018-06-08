@@ -79,11 +79,11 @@ class SectorBase(CustomFactor):
     Risk Model loadings 基础类
     """
     inputs = [USEquityPricing.close, Fundamentals.info.sector_code]
-    window_length = 24 * PPM + 1
+    window_length = 2 * PPY + 1
     sector_code = 101
 
     def compute(self, today, assets, out, closes, scs):
-        # 找出行业分类代码为101的资产序号
+        # 找出行业分类代码相应的资产序号
         s_code = scs[-1].astype(int)
         zero_locs = np.nonzero(s_code != self.sector_code)[0]
         locs = np.nonzero(s_code == self.sector_code)[0]
@@ -93,7 +93,7 @@ class SectorBase(CustomFactor):
         # 行业指数收益率
         target_returns = _index_return().loc[:today, self.sector_code].iloc[
             -self.window_length + 1:].fillna(0.0).values
-        shape = (self.window_length - 1, 1)
+        shape = (self.window_length - 1, 1)  # 输入shape = (n,1)
         target_returns = target_returns.reshape(shape)
 
         allowed_missing_count = int(self.window_length * 0.25)
@@ -103,7 +103,7 @@ class SectorBase(CustomFactor):
             allowed_missing=allowed_missing_count,
         )
         out[locs] = temp
-        out[zero_locs] = 0.0
+        out[zero_locs] = 0.0  # 非该行业股票beta值，其数据设定为0.0
 
 
 class BasicMaterials(SectorBase):
@@ -192,11 +192,12 @@ class Momentum(CustomFactor):
     had large losses in the last 11 months.
     """
     inputs = [USEquityPricing.close]
-    window_length = 12 * PPM
+    window_length = 2 * PPY
 
     def compute(self, today, assets, out, closes):
-        part = closes[:11 * PPM + 1]
-        ratio = (np.diff(part, axis=0) / part[1:])
+        top_11_loc = int(self.window_length / 12 * 11)
+        part_11 = closes[:top_11_loc + 1]
+        ratio = (np.diff(part_11, axis=0) / part_11[1:])
         out[:] = zscore(np.cumprod(1 + ratio, axis=0)[-1])
 
 

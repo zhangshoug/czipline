@@ -1,24 +1,27 @@
-import warnings
 import re
-import bcolz
-import blaze
-import pandas as pd
-from odo import discover
+import warnings
 
+import bcolz
+import pandas as pd
+
+import blaze
 from cswd.sql.constants import (
     BALANCESHEET_ITEM_MAPS, CASHFLOWSTATEMENT_ITEM_MAPS, CHNL_ITEM_MAPS,
     CZNL_ITEM_MAPS, MARGIN_MAPS, PROFITSTATEMENT_ITEM_MAPS, YLNL_ITEM_MAPS,
     YYNL_ITEM_MAPS, ZYZB_ITEM_MAPS)
+from odo import discover
 from zipline.utils.memoize import classlazyval
 
 from ..data.dataset import BoundColumn
 from ..loaders.blaze import from_blaze, global_loader
 from .base import bcolz_table_path
-from .constants import MARKET_MAPS, SECTOR_NAMES, SUPER_SECTOR_NAMES, QUARTERLY_TABLES
-from .utils import (_normalized_dshape, make_default_missing_values_for_expr)
+from .constants import (MARKET_MAPS, QUARTERLY_TABLES, SECTOR_NAMES,
+                        SUPER_SECTOR_NAMES)
+from .utils import _normalized_dshape, make_default_missing_values_for_expr
 
 ITEM_CODE_PATTERN = re.compile(r'A\d{3}')
 warnings.filterwarnings("ignore")
+
 
 def verify_code(code):
     if not re.match(ITEM_CODE_PATTERN, code):
@@ -53,7 +56,7 @@ def query_maps(table_name, attr_name, key_to_int=False):
     ct = bcolz.open(rootdir)
     d = ct.attrs[attr_name]
     if key_to_int:
-        return {int(k):v for k,v in d.items()}
+        return {int(k): v for k, v in d.items()}
     else:
         return d
 

@@ -318,7 +318,7 @@ def _fig(asset, inds, start, end):
     traces.extend(_SMA(kwargs))
     # 其他技术图
     for ind in inds:
-        if ind not in ALLOWED:
+        if ind.upper() not in ALLOWED:
             raise NotImplementedError('不支持指标{}\n，可接受的指标：{}'.format(
                 ind, ALLOWED))
         traces.extend(_indicators_factory(ind, kwargs))

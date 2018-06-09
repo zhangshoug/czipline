@@ -87,10 +87,7 @@ def symbols(symbols_, symbol_reference_date=None, handle_missing='log'):
         if type_ != first_type:
             raise TypeError('symbols_列表不得存在混合类型')
     if first_type is Equity:
-        if len(symbols_) == 1:
-            return symbols_[0]
-        else:
-            return symbols_
+        return symbols_
     elif first_type is int:
         symbols_ = [str(s).zfill(6) for s in symbols_]
 
@@ -99,10 +96,8 @@ def symbols(symbols_, symbol_reference_date=None, handle_missing='log'):
     else:
         asof_date = pd.Timestamp('today', tz='UTC')
     res = finder.lookup_symbols(symbols_, asof_date)
-    if len(res) == 1:
-        return res[0]
-    else:
-        return res
+    # 返回的是列表
+    return res
 
 
 def run_pipeline(pipe, start, end):
@@ -354,3 +349,21 @@ def volumes(assets,
     field = 'amount' if use_amount else 'volume'
     return prices(assets, start, end, frequency, field, symbol_reference_date,
                   start_offset)
+
+
+def ohlcv(asset,
+          start=pd.datetime.today() - pd.Timedelta(days=365),
+          end=pd.datetime.today()):
+    """获取单个股票期间ohlcv五列数据框"""
+    fields = ['open', 'high', 'low', 'close', 'volume']
+    dfs = []
+    # 取单个股票价格数据，如果输入为Equity实例，转换为列表形式
+    if isinstance(asset, Equity):
+        asset = [asset]
+    for field in fields:
+        # 取单个股票价格数据，必须以列表形式输入[asset]
+        df = prices(asset, start, end, price_field=field)
+        dfs.append(df)
+    res = pd.concat(dfs, axis=1)
+    res.columns = fields
+    return res.dropna()  # 在当天交易时，如果数据尚未刷新，当天会含有na

@@ -4,8 +4,9 @@
 无论是网页，还是Jupyter Notebook，光标悬停位置都可以读取日期信息，所以不显示x轴刻度
 而各项目名称包含了指标名称，故无需再使用图例
 """
-import pandas as pd
+import pytz
 import numpy as np
+import pandas as pd
 import plotly
 import plotly.graph_objs as go
 from plotly import tools
@@ -29,7 +30,7 @@ def _fig_default_setting():
 def _get_date_hovertext(data):
     hovertext = []
     for d in data.index:
-        hovertext.append('date:' + d.strftime(r'%Y-%m-%d'))
+        hovertext.append('date: ' + d.strftime(r'%Y-%m-%d'))
     return hovertext
 
 
@@ -88,6 +89,7 @@ def _MACD(kwargs):
         x=x,
         y=inds['macdsignal'],
         name='macd_signal',
+        line=dict(dash='dot'),
         text=hovertext,
     )
     hist = go.Bar(
@@ -196,11 +198,12 @@ def _BBANDS(kwargs):
     df = kwargs.get('df')
     limit_start = kwargs.get('limit_start')
     limit_end = kwargs.get('limit_end')
+    ndays = 21
     inds = indicators(
-        'BBANDS', df, timeperiod=21).loc[limit_start:limit_end, :]
+        'BBANDS', df, timeperiod=ndays).loc[limit_start:limit_end, :]
     traces = []
     for c in inds.columns:
-        name = 'price_{}'.format(c)
+        name = 'price_{}_{}'.format(c, ndays)
         trace = go.Scatter(
             x=np.arange(inds.shape[0]),
             y=inds[c],
@@ -282,7 +285,7 @@ def _relayout(traces):
     return fig
 
 
-def _fig(asset, inds, start, end):
+def _gen_fig(asset, inds, start, end):
     start = pd.Timestamp(start)
     end = pd.Timestamp(end)
     assert end > start, '结束日期必须大于开始日期'
@@ -356,7 +359,7 @@ def plot_ohlcv(asset,
     >>> plot_ohlcv('000333',['MACD','CCI'])
     >>> 
     """
-    fig = _fig(asset, inds, start, end)
+    fig = _gen_fig(asset, inds, start, end)
     plotly.offline.plot(fig)
 
 
@@ -385,5 +388,86 @@ def iplot_ohlcv(asset,
     >>> 
     """
     plotly.offline.init_notebook_mode(connected=True)
-    fig = _fig(asset, inds, start, end)
+    fig = _gen_fig(asset, inds, start, end)
     plotly.offline.iplot(fig)
+
+
+class AnalysisFigure(object):
+    """技术分析图形类"""
+
+    def __init__(self,
+                 asset,
+                 inds,
+                 start=pd.datetime.today() - pd.Timedelta(days=60),
+                 end=pd.datetime.today()):
+        self._asset = asset
+        self._inds = ensure_list(inds)
+        self._start = start
+        self._end = end
+        self._fig = None
+
+    def iplot(self):
+        plotly.offline.init_notebook_mode(connected=True)
+        if self._fig is None:
+            self._fig = _gen_fig(self._asset, self._inds, self._start,
+                                 self._end)
+        plotly.offline.iplot(self._fig)
+
+    def plot(self):
+        if self._fig is None:
+            self._fig = _gen_fig(self._asset, self._inds, self._start,
+                                 self._end)
+        plotly.offline.plot(self._fig)
+
+    def indicator_setting(self, kwargs):
+        """调整技术指标计算参数"""
+        raise NotImplementedError('尚未完成')
+
+    def change_asset(self, asset):
+        """更改要绘制图形的股票"""
+        self._asset = asset
+
+    def add_ind(self, ind_name):
+        """添加单个指标"""
+        self._inds.append(ind_name)
+
+    def remove_ind(self, ind_name):
+        """移除单个指标"""
+        self._inds.remove(ind_name)
+
+    def add_signal(self, signals):
+        """
+        添加买入卖出信号(固定添加到第一区主图)
+        在技术分析图上标注策略，便于直观分析策略的优劣
+
+        signals:Pd.Series
+            时间Index单列，数据只能为0，-1，1
+        """
+        msg = 'signals为时间序列，且值只能为"0，-1，1"三者之一'
+        assert isinstance(signals, pd.Series), msg
+        vs = set(signals.unique())
+        if len(vs.difference((0, -1, 1))):
+            raise ValueError(msg)
+        if self._fig is None:
+            self._fig = _gen_fig(self._asset, self._inds, self._start,
+                                 self._end)
+        if signals.index.tz != pytz.UTC:
+            signals.index = signals.index.tz_localize('UTC').normalize()
+        buy_signals = signals[signals >= 1]
+        sell_signals = signals[signals <= -1]
+        high = self._fig.data[0]['high']
+        low = self._fig.data[0]['low']
+        buy = go.Scatter(
+            name='买入信号',
+            mode='markers',
+            x=[low.index.get_loc(x) for x in buy_signals.index],
+            y=low.loc[buy_signals.index].values * 0.99,
+            marker=dict(symbol="triangle-up", color='red'))
+        sell = go.Scatter(
+            name='卖出信号',
+            mode='markers',
+            x=[high.index.get_loc(x) for x in sell_signals.index],
+            y=high.loc[sell_signals.index].values * 1.01,
+            marker=dict(symbol="triangle-down", color='green'))
+        self._fig.append_trace(buy, 1, 1)
+        self._fig.append_trace(sell, 1, 1)

@@ -195,9 +195,11 @@ class Momentum(CustomFactor):
     window_length = 2 * PPY
 
     def compute(self, today, assets, out, closes):
-        top_11_loc = int(self.window_length / 12 * 11)
-        part_11 = closes[:top_11_loc + 1]
-        ratio = (np.diff(part_11, axis=0) / part_11[1:])
+        # 计算尾部11个月(前12个月到前1个月之间的11个月)的累计收益率
+        last_11m_loc = int(self.window_length / 12 / 2 * 11)
+        last_1m_loc = int(self.window_length / 12 / 2)
+        ratio = (
+            np.diff(closes, axis=0) / closes[1:])[-last_11m_loc:-last_1m_loc]
         out[:] = zscore(np.cumprod(1 + ratio, axis=0)[-1])
 
 

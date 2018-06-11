@@ -59,8 +59,7 @@ class BaseConstraint(object):
         weight_var_series:权重表达式序列(以assets为索引)
         init_weights:初始权重值序列(以assets为索引)
         """
-        return self.to_cvxpy(weight_var, weight_var_series,
-                                      init_weights)
+        return self.to_cvxpy(weight_var, weight_var_series, init_weights)
 
     @abstractmethod
     def to_cvxpy(self, weight_var, weight_var_series, init_weights):
@@ -783,7 +782,7 @@ class CannotHold(BaseConstraint):
     def __init__(self, asset_or_assets, max_error_display=10):
         # 如果输入单个资产，转换为可迭代对象
         if not isinstance(asset_or_assets, Iterable):
-            asset_or_assets = [asset_or_assets]        
+            asset_or_assets = [asset_or_assets]
         self.asset_or_assets = asset_or_assets
         self.max_error_display = max_error_display
         self.constraint_assets = pd.Index(asset_or_assets)
@@ -817,15 +816,13 @@ class NotExceed(BaseConstraint):
         """Returns a string with information about the constraint.
         """
         return "%s(区间[-%s,+%s])" % (self.__class__.__name__, self.limit,
-                                        self.limit)
+                                    self.limit)
 
     def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         constraints = []
         for i in range(len(weight_var_series)):
-            constraints.extend([
-                weight_var[i] <= self.limit,
-                weight_var[i] >= -self.limit
-            ])
+            constraints.extend(
+                [weight_var[i] <= self.limit, weight_var[i] >= -self.limit])
         return constraints
 
 
@@ -850,3 +847,479 @@ class NotLessThan(BaseConstraint):
 
     def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         return [weight_var >= self.limit]
+
+
+class RiskModelExposure(BaseConstraint):
+    """限制要求有限净暴露于风险模型提供的一系列风险因子"""
+
+    def __init__(self,
+                 risk_model_loadings,
+                 min_basic_materials=None,
+                 max_basic_materials=None,
+                 min_consumer_cyclical=None,
+                 max_consumer_cyclical=None,
+                 min_financial_services=None,
+                 max_financial_services=None,
+                 min_real_estate=None,
+                 max_real_estate=None,
+                 min_consumer_defensive=None,
+                 max_consumer_defensive=None,
+                 min_health_care=None,
+                 max_health_care=None,
+                 min_utilities=None,
+                 max_utilities=None,
+                 min_communication_services=None,
+                 max_communication_services=None,
+                 min_energy=None,
+                 max_energy=None,
+                 min_industrials=None,
+                 max_industrials=None,
+                 min_technology=None,
+                 max_technology=None,
+                 min_momentum=None,
+                 max_momentum=None,
+                 min_size=None,
+                 max_size=None,
+                 min_value=None,
+                 max_value=None,
+                 min_short_term_reversal=None,
+                 max_short_term_reversal=None,
+                 min_volatility=None,
+                 max_volatility=None):
+        """
+        风险模型加载指定为浮点数据框，其浮点列为因子标签，其索引包含资产。 
+        这些可以通过Pipeline API使用`zipline.pipeline.risk_loading_pipeline()`来访问。
+        对于`risk_model_loadings`数据框中的每一列，我们约束：
+            (new_weights * risk_model_loadings[column]).sum() >= min_exposure[column]
+            (new_weights * risk_model_loadings[column]).sum() <= max_exposure[column]
+        该约束为每个因子提供合理的默认边界，可用于：
+            RiskModelExposure(risk_model_loadings)
+        要指定边界，每个因子都有可选参数来指定自定义最小值和自定义最大边界：
+            RiskModelExposure(
+                risk_model_loadings,
+                min_technology=-0.4,
+                max_technology=0.4,
+            )
+        Parameters
+        ----------
+        risk_model_loadings (pd.DataFrame)
+            An (assets x labels) frame of weights for each (asset, factor) pair, 
+            as provided by zipline.pipeline.experimental.risk_loading_pipeline().
+        min_basic_materials (float, optional)
+            Minimum net exposure value for the basic_materials sector risk factor.
+        max_basic_materials (float, optional)
+            Maximum net exposure value for the basic_materials sector risk factor.
+        min_consumer_cyclical (float, optional)
+            Minimum net exposure value for the consumer_cyclical sector risk factor.
+        max_consumer_cyclical (float, optional)
+            Maximum net exposure value for the consumer_cyclical sector risk factor.
+        min_financial_services (float, optional)
+            Minimum net exposure value for the financial_services sector risk factor.
+        max_financial_services (float, optional)
+            Maximum net exposure value for the financial_services sector risk factor.
+        min_real_estate (float, optional)
+            Minimum net exposure value for the real_estate sector risk factor.
+        max_real_estate (float, optional)
+            Maximum net exposure value for the real_estate sector risk factor.
+        min_consumer_defensive (float, optional)
+            Minimum net exposure value for the consumer_defensive sector risk factor.
+        max_consumer_defensive (float, optional)
+            Maximum net exposure value for the consumer_defensive sector risk factor.
+        min_health_care (float, optional)
+            Minimum net exposure value for the health_care sector risk factor.
+        max_health_care (float, optional)
+            Maximum net exposure value for the health_care sector risk factor.
+        min_utilities (float, optional)
+            Minimum net exposure value for the utilities sector risk factor.
+        max_utilities (float, optional)
+            Maximum net exposure value for the utilities sector risk factor.
+        min_communication_services (float, optional)
+            Minimum net exposure value for the communication_services sector risk factor.
+        max_communication_services (float, optional)
+            Maximum net exposure value for the communication_services sector risk factor.
+        min_energy (float, optional)
+            Minimum net exposure value for the energy sector risk factor.
+        max_energy (float, optional)
+            Maximum net exposure value for the energy sector risk factor.
+        min_industrials (float, optional)
+            Minimum net exposure value for the industrials sector risk factor.
+        max_industrials (float, optional)
+            Maximum net exposure value for the industrials sector risk factor.
+        min_technology (float, optional)
+            Minimum net exposure value for the technology sector risk factor.
+        max_technology (float, optional)
+            Maximum net exposure value for the technology sector risk factor.
+        min_momentum (float, optional)
+            Minimum net exposure value for the momentum style risk factor.
+        max_momentum (float, optional)
+            Maximum net exposure value for the momentum style risk factor.
+        min_size (float, optional)
+            Minimum net exposure value for the size style risk factor.
+        max_size (float, optional)
+            Maximum net exposure value for the size style risk factor.
+        min_value (float, optional)
+            Minimum net exposure value for the value style risk factor.
+        max_value (float, optional)
+            Maximum net exposure value for the value style risk factor.
+        min_short_term_reversal (float, optional)
+            Minimum net exposure value for the short_term_reversal style risk factor.
+        max_short_term_reversal (float, optional)
+            Maximum net exposure value for the short_term_reversal style risk factor.
+        min_volatility (float, optional)
+            Minimum net exposure value for the volatility style risk factor.
+        max_volatility (float, optional)
+            Maximum net exposure value for the volatility style risk factor.
+
+        注
+        --
+            1. 与原版本不同的是，不使用`version`控制
+            2. 行业因子默认边界为`(-0.18, 0.18)`
+            3. 每个主题因子边界`(-0.36, 0.36)`
+        """
+        self.risk_model_loadings = risk_model_loadings
+
+        # BasicMaterials
+        if min_basic_materials:
+            self.min_basic_materials = min_basic_materials
+        else:
+            self.min_basic_materials = -0.18
+        if max_basic_materials:
+            self.max_basic_materials = max_basic_materials
+        else:
+            self.max_basic_materials = 0.18
+        self._check_min_max(self.min_basic_materials, self.max_basic_materials,
+                            'basic_materials')
+
+        # ConsumerCyclical
+        if min_consumer_cyclical:
+            self.min_consumer_cyclical = min_consumer_cyclical
+        else:
+            self.min_consumer_cyclical = -0.18
+        if max_consumer_cyclical:
+            self.max_consumer_cyclical = max_consumer_cyclical
+        else:
+            self.max_consumer_cyclical = 0.18
+        self._check_min_max(self.min_consumer_cyclical,
+                            self.max_consumer_cyclical, 'consumer_cyclical')
+
+        # FinancialServices
+        if min_financial_services:
+            self.min_financial_services = min_financial_services
+        else:
+            self.min_financial_services = -0.18
+        if max_financial_services:
+            self.max_financial_services = max_financial_services
+        else:
+            self.max_financial_services = 0.18
+        self._check_min_max(self.min_financial_services,
+                            self.max_financial_services, 'financial_services')
+
+        # RealEstate
+        if min_real_estate:
+            self.min_real_estate = min_real_estate
+        else:
+            self.min_real_estate = -0.18
+        if max_real_estate:
+            self.max_real_estate = max_real_estate
+        else:
+            self.max_real_estate = 0.18
+        self._check_min_max(self.min_real_estate, self.max_real_estate,
+                            'real_estate')
+
+        # ConsumerDefensive
+        if min_consumer_defensive:
+            self.min_consumer_defensive = min_consumer_defensive
+        else:
+            self.min_consumer_defensive = -0.18
+        if max_consumer_defensive:
+            self.max_consumer_defensive = max_consumer_defensive
+        else:
+            self.max_consumer_defensive = 0.18
+        self._check_min_max(self.min_consumer_defensive,
+                            self.max_consumer_defensive, 'consumer_defensive')
+
+        # HealthCare
+        if min_health_care:
+            self.min_health_care = min_health_care
+        else:
+            self.min_health_care = -0.18
+        if max_health_care:
+            self.max_health_care = max_health_care
+        else:
+            self.max_health_care = 0.18
+        self._check_min_max(self.min_health_care, self.max_health_care,
+                            'health_care')
+
+        # Utilities
+        if min_utilities:
+            self.min_utilities = min_utilities
+        else:
+            self.min_utilities = -0.18
+        if max_utilities:
+            self.max_utilities = max_utilities
+        else:
+            self.max_utilities = 0.18
+        self._check_min_max(self.min_utilities, self.max_utilities,
+                            'utilities')
+
+        # CommunicationServices
+        if min_communication_services:
+            self.min_communication_services = min_communication_services
+        else:
+            self.min_communication_services = -0.18
+        if max_communication_services:
+            self.max_communication_services = max_communication_services
+        else:
+            self.max_communication_services = 0.18
+        self._check_min_max(self.min_communication_services,
+                            self.max_communication_services,
+                            'communication_services')
+
+        # Energy
+        if min_energy:
+            self.min_energy = min_energy
+        else:
+            self.min_energy = -0.18
+        if max_energy:
+            self.max_energy = max_energy
+        else:
+            self.max_energy = 0.18
+        self._check_min_max(self.min_energy, self.max_energy, 'energy')
+
+        # Industrials
+        if min_industrials:
+            self.min_industrials = min_industrials
+        else:
+            self.min_industrials = -0.18
+        if max_industrials:
+            self.max_industrials = max_industrials
+        else:
+            self.max_industrials = 0.18
+        self._check_min_max(self.min_industrials, self.max_industrials,
+                            'industrials')
+
+        # Technology
+        if min_technology:
+            self.min_technology = min_technology
+        else:
+            self.min_technology = -0.18
+        if max_technology:
+            self.max_technology = max_technology
+        else:
+            self.max_technology = 0.18
+        self._check_min_max(self.min_technology, self.max_technology,
+                            'technology')
+
+        # Momentum
+        if min_momentum:
+            self.min_momentum = min_momentum
+        else:
+            self.min_momentum = -0.36
+        if max_momentum:
+            self.max_momentum = max_momentum
+        else:
+            self.max_momentum = 0.36
+        self._check_min_max(self.min_momentum, self.max_momentum, 'momentum')
+
+        # Value
+        if min_value:
+            self.min_value = min_value
+        else:
+            self.min_value = -0.36
+        if max_value:
+            self.max_value = max_value
+        else:
+            self.max_value = 0.36
+        self._check_min_max(self.min_value, self.max_value, 'value')
+
+        # Size
+        if min_size:
+            self.min_size = min_size
+        else:
+            self.min_size = -0.36
+        if max_size:
+            self.max_size = max_size
+        else:
+            self.max_size = 0.36
+        self._check_min_max(self.min_size, self.max_size, 'size')
+
+        # ShortTermReversal
+        if min_short_term_reversal:
+            self.min_short_term_reversal = min_short_term_reversal
+        else:
+            self.min_short_term_reversal = -0.36
+        if max_short_term_reversal:
+            self.max_short_term_reversal = max_short_term_reversal
+        else:
+            self.max_short_term_reversal = 0.36
+        self._check_min_max(self.min_short_term_reversal,
+                            self.max_short_term_reversal,
+                            'short_term_reversal')
+
+        # Volatility
+        if min_volatility:
+            self.min_volatility = min_volatility
+        else:
+            self.min_volatility = -0.36
+        if max_volatility:
+            self.max_volatility = max_volatility
+        else:
+            self.max_volatility = 0.36
+        self._check_min_max(self.min_volatility,
+                            self.max_volatility,
+                            'volatility')
+
+        super(RiskModelExposure, self).__init__()
+
+    def _check_min_max(self, min_, max_, name):
+        msg = '{}参数:{}最小值与最大值设置无效。'.format(repr(self), name)
+        if min_ >= max_:
+            raise ValueError(msg)
+
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
+        constraints = []
+        locs = weight_var_series.index.get_indexer(
+            self.risk_model_loadings.index)
+
+        # BasicMaterials
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['BasicMaterials']) >=
+            self.min_basic_materials)
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['BasicMaterials']) <=
+            self.max_basic_materials)
+
+        # ConsumerCyclical
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['ConsumerCyclical']) >=
+            self.min_consumer_cyclical)
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['ConsumerCyclical']) <=
+            self.max_consumer_cyclical)
+
+        # FinancialServices
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['FinancialServices']) >=
+            self.min_financial_services)
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['FinancialServices']) <=
+            self.max_financial_services)
+
+        # RealEstate
+        constraints.append(
+            cvx.sum(weight_var[locs] * self.risk_model_loadings['RealEstate'])
+            >= self.min_real_estate)
+        constraints.append(
+            cvx.sum(weight_var[locs] * self.risk_model_loadings['RealEstate'])
+            <= self.max_real_estate)
+
+        # ConsumerDefensive
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['ConsumerDefensive']) >=
+            self.min_consumer_defensive)
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['ConsumerDefensive']) <=
+            self.max_consumer_defensive)
+
+        # HealthCare
+        constraints.append(
+            cvx.sum(weight_var[locs] * self.risk_model_loadings['HealthCare'])
+            >= self.min_health_care)
+        constraints.append(
+            cvx.sum(weight_var[locs] * self.risk_model_loadings['HealthCare'])
+            <= self.max_health_care)
+
+        # Utilities
+        constraints.append(
+            cvx.sum(weight_var[locs] * self.risk_model_loadings['Utilities'])
+            >= self.min_utilities)
+        constraints.append(
+            cvx.sum(weight_var[locs] * self.risk_model_loadings['Utilities'])
+            <= self.max_utilities)
+
+        # CommunicationServices
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['CommunicationServices']) >=
+            self.min_communication_services)
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['CommunicationServices']) <=
+            self.max_communication_services)
+
+        # Energy
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['Energy']) >= self.min_energy)
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['Energy']) <= self.max_energy)
+
+        # Industrials
+        constraints.append(
+            cvx.sum(weight_var[locs] * self.risk_model_loadings['Industrials'])
+            >= self.min_industrials)
+        constraints.append(
+            cvx.sum(weight_var[locs] * self.risk_model_loadings['Industrials'])
+            <= self.max_industrials)
+
+        # Technology
+        constraints.append(
+            cvx.sum(weight_var[locs] * self.risk_model_loadings['Technology'])
+            >= self.min_technology)
+        constraints.append(
+            cvx.sum(weight_var[locs] * self.risk_model_loadings['Technology'])
+            <= self.max_technology)
+
+        # Momentum
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['Momentum']) >= self.min_momentum)
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['Momentum']) <= self.max_momentum)
+
+        # Value
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['Value']) >= self.min_value)
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['Value']) <= self.max_value)
+
+        # Size
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['Size']) >= self.min_size)
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['Size']) <= self.max_size)
+
+        # ShortTermReversal
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['ShortTermReversal']) >=
+            self.min_short_term_reversal)
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['ShortTermReversal']) <=
+            self.max_short_term_reversal)
+
+        # Volatility
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['Volatility']) >=
+            self.min_volatility)
+        constraints.append(
+            cvx.sum(weight_var[locs] *
+                    self.risk_model_loadings['Volatility']) <=
+            self.max_volatility)
+        return constraints

@@ -15,7 +15,7 @@ import cvxpy as cvx
 
 from .utils import check_series_or_dict, get_ix
 
-__all__ = ['TargetWeights', 'MaximizeAlpha']
+__all__ = ['ObjectiveBase', 'TargetWeights', 'MaximizeAlpha']
 
 
 class ObjectiveBase(object):
@@ -78,7 +78,8 @@ class TargetWeights(ObjectiveBase):
 
     def __init__(self, weights):
         check_series_or_dict(weights, 'weights')
-        self._target_weights = pd.Series(weights)
+        # 目标权重不得包含Nan值
+        self._target_weights = pd.Series(weights).fillna(0.0)
         self._old_index = self._target_weights.index
         super(TargetWeights, self).__init__()
 
@@ -117,7 +118,8 @@ class MaximizeAlpha(ObjectiveBase):
 
     def __init__(self, alphas):
         check_series_or_dict(alphas, 'alphas')
-        self._alphas = pd.Series(alphas)
+        # 因子值不得为Nan，以0代替
+        self._alphas = pd.Series(alphas).fillna(0.0)
         self._old_index = self._alphas.index
         super(MaximizeAlpha, self).__init__()
 

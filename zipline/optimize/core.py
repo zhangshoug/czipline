@@ -9,13 +9,13 @@ from .result import (InfeasibleConstraints, OptimizationFailed,
 
 logger = logbook.Logger('投资组合优化')
 
-__all__ = [
-    'order_optimal_portfolio', 'calculate_optimal_portfolio',
-    'run_optimization'
-]
+__all__ = ['calculate_optimal_portfolio', 'run_optimization']
 
 
 def _run(objective, constraints, current_weights):
+    if current_weights is not None:
+        if len(current_weights) == 0:
+            current_weights = None
     cvx_objective = objective.to_cvxpy(current_weights)
     new_weights = objective.new_weights
     new_weights_series = objective.new_weights_series
@@ -124,31 +124,3 @@ def calculate_optimal_portfolio(objective, constraints,
         raise InfeasibleConstraints(info)
     elif status == 'optimal':
         return result.new_weights
-
-
-def order_optimal_portfolio(objective, constraints):
-    """
-    计算优化投资组合，并放置实现该组合所必需的订单
-
-    Parameters
-    ----------
-        objective (Objective)
-            The objective to be minimized/maximized by the new portfolio.
-        constraints (list[Constraint])
-            Constraints that must be respected by the new portfolio.
-
-    Raises
-    ------
-        InfeasibleConstraints
-            Raised when there is no possible portfolio that satisfies the 
-            received constraints.
-        UnboundedObjective
-            Raised when the received constraints are not sufficient to put 
-            an upper (or lower) bound on the calculated portfolio weights.
-
-    Returns
-    -------	
-        order_ids (pd.Series[Asset -> str])
-            The unique identifiers for the orders that were placed.    
-    """
-    pass

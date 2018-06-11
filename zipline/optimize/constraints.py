@@ -3,19 +3,18 @@
 """
 
 from abc import ABCMeta, abstractmethod
-
+import logbook
 import numpy as np
 import pandas as pd
 from collections import Iterable
 import cvxpy as cvx
 
 from .utils import check_series_or_dict, get_ix
-
+logger = logbook.Logger('投资组合优化限制')
 __all__ = [
     'NotConstrained',
     'MaxGrossExposure',
     'NetExposure',
-    'NetGroupExposure',
     'DollarNeutral',
     'NetGroupExposure',
     'PositionConcentration',
@@ -30,6 +29,7 @@ __all__ = [
     'CannotHold',
     'NotExceed',
     'NotLessThan',
+    'RiskModelExposure',
 ]
 
 NotConstrained = 'NotConstrained'
@@ -181,7 +181,9 @@ class DollarNeutral(BaseConstraint):
 
         # 找到涉及到变量的位置
         ix = get_ix(weight_var_series, common_index)
-
+        # 如果没有相应位置序列，则返回空限制(即无限制)
+        if len(ix) == 0:
+            return []
         # 限定其和的绝对值不超过容忍阀值
         return [
             cvx.abs(cvx.sum(weight_var[ix])) <= self.tolerance,
@@ -274,7 +276,7 @@ class NetGroupExposure(BaseConstraint):
         super(NetGroupExposure, self).__init__()
 
     @classmethod
-    def with_equal_bounds(labels, min_, max_, etf_lookthru=None):
+    def with_equal_bounds(cls, labels, min_, max_, etf_lookthru=None):
         """
         Special case constructor that applies static lower and upper bounds 
         to all groups.
@@ -301,7 +303,7 @@ class NetGroupExposure(BaseConstraint):
         # 依然要先检查类型是否正确(主要要使用unique方法)
         check_series_or_dict(labels, 'labels')
         labels = pd.Series(labels)
-        return NetGroupExposure(
+        return cls(
             labels=labels,
             min_weights=pd.Series(index=labels.unique(), data=min_),
             max_weights=pd.Series(index=labels.unique(), data=max_),
@@ -411,7 +413,7 @@ class PositionConcentration(BaseConstraint):
         super(PositionConcentration, self).__init__()
 
     @classmethod
-    def with_equal_bounds(min_, max_, etf_lookthru=None):
+    def with_equal_bounds(cls, min_, max_, etf_lookthru=None):
         """
         Special case constructor that applies static lower and upper bounds to all assets.  
         PositionConcentration.with_equal_bounds(min, max)   
@@ -421,7 +423,12 @@ class PositionConcentration(BaseConstraint):
             min_ (float) – Minimum position weight for all assets.
             max_ (float) – Maximum position weight for all assets.   
         """
-        return PositionConcentration(pd.Series(), pd.Series(), min_, max_)
+        return cls(
+            min_weights=pd.Series(),
+            max_weights=pd.Series(),
+            default_min_weight=min_,
+            default_max_weight=max_,
+            etf_lookthru=etf_lookthru)
 
     def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         # 限定条件表达式列表
@@ -447,7 +454,7 @@ class PositionConcentration(BaseConstraint):
             err_values = common_index[candidates_max < candidates_min]
             msg_fmt = '在限制：{}中, 股票：{} 设置最小权重为：{}，最大权重为：{}，最小值大于最大值'
             for asset in err_values:
-                print(
+                logger.info(
                     msg_fmt.format(
                         str(self), asset, candidates_min[asset],
                         candidates_max[asset]))
@@ -852,6 +859,9 @@ class NotLessThan(BaseConstraint):
 class RiskModelExposure(BaseConstraint):
     """限制要求有限净暴露于风险模型提供的一系列风险因子"""
 
+    sector_limit = (-0.18, 0.18)
+    style_limit = (-0.36, 0.36)
+
     def __init__(self,
                  risk_model_loadings,
                  min_basic_materials=None,
@@ -982,11 +992,11 @@ class RiskModelExposure(BaseConstraint):
         if min_basic_materials:
             self.min_basic_materials = min_basic_materials
         else:
-            self.min_basic_materials = -0.18
+            self.min_basic_materials = self.sector_limit[0]
         if max_basic_materials:
             self.max_basic_materials = max_basic_materials
         else:
-            self.max_basic_materials = 0.18
+            self.max_basic_materials = self.sector_limit[1]
         self._check_min_max(self.min_basic_materials, self.max_basic_materials,
                             'basic_materials')
 
@@ -994,11 +1004,11 @@ class RiskModelExposure(BaseConstraint):
         if min_consumer_cyclical:
             self.min_consumer_cyclical = min_consumer_cyclical
         else:
-            self.min_consumer_cyclical = -0.18
+            self.min_consumer_cyclical = self.sector_limit[0]
         if max_consumer_cyclical:
             self.max_consumer_cyclical = max_consumer_cyclical
         else:
-            self.max_consumer_cyclical = 0.18
+            self.max_consumer_cyclical = self.sector_limit[1]
         self._check_min_max(self.min_consumer_cyclical,
                             self.max_consumer_cyclical, 'consumer_cyclical')
 
@@ -1006,11 +1016,11 @@ class RiskModelExposure(BaseConstraint):
         if min_financial_services:
             self.min_financial_services = min_financial_services
         else:
-            self.min_financial_services = -0.18
+            self.min_financial_services = self.sector_limit[0]
         if max_financial_services:
             self.max_financial_services = max_financial_services
         else:
-            self.max_financial_services = 0.18
+            self.max_financial_services = self.sector_limit[1]
         self._check_min_max(self.min_financial_services,
                             self.max_financial_services, 'financial_services')
 
@@ -1018,11 +1028,11 @@ class RiskModelExposure(BaseConstraint):
         if min_real_estate:
             self.min_real_estate = min_real_estate
         else:
-            self.min_real_estate = -0.18
+            self.min_real_estate = self.sector_limit[0]
         if max_real_estate:
             self.max_real_estate = max_real_estate
         else:
-            self.max_real_estate = 0.18
+            self.max_real_estate = self.sector_limit[1]
         self._check_min_max(self.min_real_estate, self.max_real_estate,
                             'real_estate')
 
@@ -1030,11 +1040,11 @@ class RiskModelExposure(BaseConstraint):
         if min_consumer_defensive:
             self.min_consumer_defensive = min_consumer_defensive
         else:
-            self.min_consumer_defensive = -0.18
+            self.min_consumer_defensive = self.sector_limit[0]
         if max_consumer_defensive:
             self.max_consumer_defensive = max_consumer_defensive
         else:
-            self.max_consumer_defensive = 0.18
+            self.max_consumer_defensive = self.sector_limit[1]
         self._check_min_max(self.min_consumer_defensive,
                             self.max_consumer_defensive, 'consumer_defensive')
 
@@ -1042,11 +1052,11 @@ class RiskModelExposure(BaseConstraint):
         if min_health_care:
             self.min_health_care = min_health_care
         else:
-            self.min_health_care = -0.18
+            self.min_health_care = self.sector_limit[0]
         if max_health_care:
             self.max_health_care = max_health_care
         else:
-            self.max_health_care = 0.18
+            self.max_health_care = self.sector_limit[1]
         self._check_min_max(self.min_health_care, self.max_health_care,
                             'health_care')
 
@@ -1054,11 +1064,11 @@ class RiskModelExposure(BaseConstraint):
         if min_utilities:
             self.min_utilities = min_utilities
         else:
-            self.min_utilities = -0.18
+            self.min_utilities = self.sector_limit[0]
         if max_utilities:
             self.max_utilities = max_utilities
         else:
-            self.max_utilities = 0.18
+            self.max_utilities = self.sector_limit[1]
         self._check_min_max(self.min_utilities, self.max_utilities,
                             'utilities')
 
@@ -1066,11 +1076,11 @@ class RiskModelExposure(BaseConstraint):
         if min_communication_services:
             self.min_communication_services = min_communication_services
         else:
-            self.min_communication_services = -0.18
+            self.min_communication_services = self.sector_limit[0]
         if max_communication_services:
             self.max_communication_services = max_communication_services
         else:
-            self.max_communication_services = 0.18
+            self.max_communication_services = self.sector_limit[1]
         self._check_min_max(self.min_communication_services,
                             self.max_communication_services,
                             'communication_services')
@@ -1079,22 +1089,22 @@ class RiskModelExposure(BaseConstraint):
         if min_energy:
             self.min_energy = min_energy
         else:
-            self.min_energy = -0.18
+            self.min_energy = self.sector_limit[0]
         if max_energy:
             self.max_energy = max_energy
         else:
-            self.max_energy = 0.18
+            self.max_energy = self.sector_limit[1]
         self._check_min_max(self.min_energy, self.max_energy, 'energy')
 
         # Industrials
         if min_industrials:
             self.min_industrials = min_industrials
         else:
-            self.min_industrials = -0.18
+            self.min_industrials = self.sector_limit[0]
         if max_industrials:
             self.max_industrials = max_industrials
         else:
-            self.max_industrials = 0.18
+            self.max_industrials = self.sector_limit[1]
         self._check_min_max(self.min_industrials, self.max_industrials,
                             'industrials')
 
@@ -1102,11 +1112,11 @@ class RiskModelExposure(BaseConstraint):
         if min_technology:
             self.min_technology = min_technology
         else:
-            self.min_technology = -0.18
+            self.min_technology = self.sector_limit[0]
         if max_technology:
             self.max_technology = max_technology
         else:
-            self.max_technology = 0.18
+            self.max_technology = self.sector_limit[1]
         self._check_min_max(self.min_technology, self.max_technology,
                             'technology')
 
@@ -1114,44 +1124,44 @@ class RiskModelExposure(BaseConstraint):
         if min_momentum:
             self.min_momentum = min_momentum
         else:
-            self.min_momentum = -0.36
+            self.min_momentum = self.style_limit[0]
         if max_momentum:
             self.max_momentum = max_momentum
         else:
-            self.max_momentum = 0.36
+            self.max_momentum = self.style_limit[1]
         self._check_min_max(self.min_momentum, self.max_momentum, 'momentum')
 
         # Value
         if min_value:
             self.min_value = min_value
         else:
-            self.min_value = -0.36
+            self.min_value = self.style_limit[0]
         if max_value:
             self.max_value = max_value
         else:
-            self.max_value = 0.36
+            self.max_value = self.style_limit[1]
         self._check_min_max(self.min_value, self.max_value, 'value')
 
         # Size
         if min_size:
             self.min_size = min_size
         else:
-            self.min_size = -0.36
+            self.min_size = self.style_limit[0]
         if max_size:
             self.max_size = max_size
         else:
-            self.max_size = 0.36
+            self.max_size = self.style_limit[1]
         self._check_min_max(self.min_size, self.max_size, 'size')
 
         # ShortTermReversal
         if min_short_term_reversal:
             self.min_short_term_reversal = min_short_term_reversal
         else:
-            self.min_short_term_reversal = -0.36
+            self.min_short_term_reversal = self.style_limit[0]
         if max_short_term_reversal:
             self.max_short_term_reversal = max_short_term_reversal
         else:
-            self.max_short_term_reversal = 0.36
+            self.max_short_term_reversal = self.style_limit[1]
         self._check_min_max(self.min_short_term_reversal,
                             self.max_short_term_reversal,
                             'short_term_reversal')
@@ -1160,13 +1170,12 @@ class RiskModelExposure(BaseConstraint):
         if min_volatility:
             self.min_volatility = min_volatility
         else:
-            self.min_volatility = -0.36
+            self.min_volatility = self.style_limit[0]
         if max_volatility:
             self.max_volatility = max_volatility
         else:
-            self.max_volatility = 0.36
-        self._check_min_max(self.min_volatility,
-                            self.max_volatility,
+            self.max_volatility = self.style_limit[1]
+        self._check_min_max(self.min_volatility, self.max_volatility,
                             'volatility')
 
         super(RiskModelExposure, self).__init__()
@@ -1315,11 +1324,9 @@ class RiskModelExposure(BaseConstraint):
 
         # Volatility
         constraints.append(
-            cvx.sum(weight_var[locs] *
-                    self.risk_model_loadings['Volatility']) >=
-            self.min_volatility)
+            cvx.sum(weight_var[locs] * self.risk_model_loadings['Volatility'])
+            >= self.min_volatility)
         constraints.append(
-            cvx.sum(weight_var[locs] *
-                    self.risk_model_loadings['Volatility']) <=
-            self.max_volatility)
+            cvx.sum(weight_var[locs] * self.risk_model_loadings['Volatility'])
+            <= self.max_volatility)
         return constraints

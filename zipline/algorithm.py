@@ -123,6 +123,8 @@ from zipline.sources.requests_csv import PandasRequestsCSV
 from zipline.gens.sim_engine import MinuteSimulationClock
 from zipline.sources.benchmark_source import BenchmarkSource
 from zipline.zipline_warnings import ZiplineDeprecationWarning
+# # 增加运行优化放置订单部分
+from zipline.optimize import ObjectiveBase, calculate_optimal_portfolio
 
 # # 设置logbook显示本地时间
 logbook.set_datetime_format('local')
@@ -2492,6 +2494,102 @@ class TradingAlgorithm(object):
         return \
             self.engine.run_pipeline(pipeline, start_session, end_session), \
             end_session
+
+    ##################
+    # optimal API
+    ##################
+    def _last_trade(self, sid):
+        """
+        给定股票最近交易价格
+
+        parameters
+        ----------
+
+        sid : zipline Asset
+            the sid price
+
+        """
+        try:
+            return self.trading_client.current_data.current(sid, "price")
+        except KeyError:
+            return self.portfolio.positions[sid].last_sale_price
+
+    def _get_current_holdings(self):
+        """
+        当前组合头寸。即股票持有的数量。
+
+        returns
+        -------
+        pandas.Series
+            contracts held of each asset
+
+        """
+        positions = self.portfolio.positions
+        return pd.Series(
+            {stock: pos.amount
+             for stock, pos in positions.items()})
+
+    def get_current_allocations(self):
+        """
+        当前资产组合中各股票的权重
+
+        w = 持有股票市值 / 资产组合市值
+
+        returns
+        -------
+        pandas.Series
+            current allocations as a percent of total liquidity
+
+        notes
+        -----
+        资产组合市值 = 持有股票市值 + 现金
+
+        """
+        holdings = self._get_current_holdings()
+        prices = pd.Series(
+            {sid: self._last_trade(sid)
+             for sid in holdings.index})
+        return prices * holdings / self.portfolio.portfolio_value
+
+    @api_method
+    @disallowed_in_before_trading_start(OrderInBeforeTradingStart())
+    def order_optimal_portfolio(self, objective, constraints):
+        """
+        计算优化投资组合，并放置实现该组合所必需的订单
+
+        Parameters
+        ----------
+            objective (Objective)
+                The objective to be minimized/maximized by the new portfolio.
+            constraints (list[Constraint])
+                Constraints that must be respected by the new portfolio.
+
+        Raises
+        ------
+            InfeasibleConstraints
+                Raised when there is no possible portfolio that satisfies the 
+                received constraints.
+            UnboundedObjective
+                Raised when the received constraints are not sufficient to put 
+                an upper (or lower) bound on the calculated portfolio weights.
+
+        Returns
+        -------	
+            order_ids (pd.Series[Asset -> str])
+                The unique identifiers for the orders that were placed.    
+        """
+        current_weights = self.get_current_allocations()
+        new_weights = calculate_optimal_portfolio(objective, constraints,
+                                                  current_weights)
+        # 只有不为0的权重才有意义
+        new_weights = new_weights[new_weights != 0.0]
+        all_assets = new_weights.index.union(current_weights.index).unique()
+        # 原权重的股票不再出现在新权重中，则意味着清0
+        order_plan = new_weights.reindex(all_assets, fill_value=0.0)
+        return pd.Series({
+            asset: self.order_target_percent(asset, percent)
+            for asset, percent in order_plan.items()
+        })
 
     ##################
     # End Pipeline API

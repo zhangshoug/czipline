@@ -17,6 +17,11 @@ try:
 except NameError:
     __IPYTHON__ = False
 
+pref_root = os.path.expanduser('~/.backtest')
+# 存放回测结果路径
+if not os.path.exists(pref_root):
+    os.mkdir(pref_root)
+
 
 @click.group()
 @click.option(
@@ -65,6 +70,7 @@ def extract_option_object(option):
     option_object : click.Option
         The option object that this decorator will create.
     """
+
     @option
     def opt():
         pass
@@ -96,7 +102,9 @@ def ipython_only(option):
         def _(*args, **kwargs):
             kwargs[argname] = None
             return f(*args, **kwargs)
+
         return _
+
     return d
 
 
@@ -151,8 +159,7 @@ def ipython_only(option):
     default=pd.Timestamp.utcnow(),
     show_default=False,
     help='The date to lookup data on or before.\n'
-    '[default: <current-time>]'
-)
+    '[default: <current-time>]')
 @click.option(
     '-s',
     '--start',
@@ -168,7 +175,8 @@ def ipython_only(option):
 @click.option(
     '-o',
     '--output',
-    default='-',
+    default=os.path.join(pref_root,
+                         'algo_{}.pkl'.format(pd.Timestamp.now().value)),
     metavar='FILENAME',
     show_default=True,
     help="The location to write the perf data. If this is '-' the perf will"
@@ -179,14 +187,9 @@ def ipython_only(option):
     '--trading-calendar',
     metavar='TRADING-CALENDAR',
     default='SZSH',
-    help="The calendar you want to use e.g. LSE. NYSE is the default."
-)
+    help="The calendar you want to use e.g. LSE. NYSE is the default.")
 @click.option(
-    '-B',
-    '--bm-symbol',
-    default='000300',
-    help="基准收益率指数代码，默认000300，沪深300指数"
-)
+    '-B', '--bm-symbol', default='000300', help="基准收益率指数代码，默认000300，沪深300指数")
 @click.option(
     '--print-algo/--no-print-algo',
     is_flag=True,
@@ -200,29 +203,17 @@ def ipython_only(option):
     help='The metrics set to use. New metrics sets may be registered in your'
     ' extension.py.',
 )
-@ipython_only(click.option(
-    '--local-namespace/--no-local-namespace',
-    is_flag=True,
-    default=None,
-    help='Should the algorithm methods be resolved in the local namespace.'
-))
+@ipython_only(
+    click.option(
+        '--local-namespace/--no-local-namespace',
+        is_flag=True,
+        default=None,
+        help='Should the algorithm methods be resolved in the local namespace.'
+    ))
 @click.pass_context
-def run(ctx,
-        algofile,
-        algotext,
-        define,
-        data_frequency,
-        capital_base,
-        bundle,
-        bundle_timestamp,
-        start,
-        end,
-        output,
-        trading_calendar,
-        print_algo,
-        metrics_set,
-        local_namespace,
-        bm_symbol):
+def run(ctx, algofile, algotext, define, data_frequency, capital_base, bundle,
+        bundle_timestamp, start, end, output, trading_calendar, print_algo,
+        metrics_set, local_namespace, bm_symbol):
     """Run a backtest for the given algorithm.
     """
     # check that the start and end dates are passed correctly
@@ -231,8 +222,7 @@ def run(ctx,
         # does not pass either of these and then passes the first only
         # to be told they need to pass the second argument also
         ctx.fail(
-            "must specify dates with '-s' / '--start' and '-e' / '--end'",
-        )
+            "must specify dates with '-s' / '--start' and '-e' / '--end'", )
     if start is None:
         ctx.fail("must specify a start date with '-s' / '--start'")
     if end is None:
@@ -241,11 +231,10 @@ def run(ctx,
     if (algotext is not None) == (algofile is not None):
         ctx.fail(
             "must specify exactly one of '-f' / '--algofile' or"
-            " '-t' / '--algotext'",
-        )
+            " '-t' / '--algotext'", )
 
     trading_calendar = get_calendar(trading_calendar)
-    
+
     perf = _run(
         initialize=None,
         handle_data=None,
@@ -274,7 +263,6 @@ def run(ctx,
         click.echo(str(perf))
     elif output != os.devnull:  # make the zipline magic not write any data
         perf.to_pickle(output)
-
     return perf
 
 
@@ -292,12 +280,16 @@ def zipline_magic(line, cell=None):
             # put our overrides at the start of the parameter list so that
             # users may pass values with higher precedence
             [
-                '--algotext', cell,
-                '--output', os.devnull,  # don't write the results by default
+                '--algotext',
+                cell,
+                # # 使用默认路近写入回测结果
+                # '--output',
+                # os.devnull,  # don't write the results by default
             ] + ([
                 # these options are set when running in line magic mode
                 # set a non None algo text to use the ipython user_ns
-                '--algotext', '',
+                '--algotext',
+                '',
                 '--local-namespace',
             ] if cell is None else []) + line.split(),
             '%s%%zipline' % ((cell or '') and '%'),
@@ -329,8 +321,7 @@ def zipline_magic(line, cell=None):
 @click.option(
     '--show-progress/--no-show-progress',
     default=True,
-    help='Print progress information to the terminal.'
-)
+    help='Print progress information to the terminal.')
 def ingest(bundle, assets_version, show_progress):
     """Ingest the data for the given bundle.
     """
@@ -395,8 +386,7 @@ def bundles():
             continue
         try:
             ingestions = list(
-                map(text_type, bundles_module.ingestions_for_bundle(bundle))
-            )
+                map(text_type, bundles_module.ingestions_for_bundle(bundle)))
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise

@@ -17,8 +17,9 @@ from .factors import CustomFactor, DailyReturns, SimpleMovingAverage
 from .filters import CustomFilter
 from .fundamentals.reader import Fundamentals
 
-#============================辅助函数区=============================#
-
+##################
+# 辅助函数
+##################
 
 def continuous_num(bool_values, include=False):
     """尾部连续为真累计数"""
@@ -86,9 +87,9 @@ def _select_annual_indices(dates):
         locs.append(loc)
     return locs
 
-
-#============================自定义因子=============================#
-
+##################
+# 自定义因子
+##################
 
 class SuccessiveYZ(CustomFactor):
     """
@@ -204,9 +205,9 @@ class SuccessiveSuspensionDays(CustomFactor):
         is_suspension = vs == 0
         out[:] = continuous_num(is_suspension, include)
 
-
-#================================过滤器=============================#
-
+##################
+# 过滤器
+##################
 
 def IsST():
     """
@@ -388,8 +389,10 @@ class IsResumed(CustomFilter):
         not_new = cmv[0] > 0  # 通过流通市值排除新股上市
         out[:] = is_tp & is_fp & not_new
 
+##################
+# 财务相关因子
+##################
 
-#==============================财务相关=============================#
 class AnnualFinancalData(CustomFactor):
     """
     选取当前时间为t,t-n年的年度科目数据
@@ -491,8 +494,10 @@ class TTMDividend(CustomFactor):
         loc = changed_locations(mns, include_first=True)[-12:]
         out[:] = nanmean(ds[loc], axis=0)
 
+##################
+# 估值相关因子
+##################
 
-#==============================估值相关=============================#
 # 参考网址：https://www.quantopian.com/help/fundamentals#valuation
 def enterprise_value():
     """"""

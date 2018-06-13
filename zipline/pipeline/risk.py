@@ -195,6 +195,7 @@ class Momentum(CustomFactor):
     window_length = 2 * PPY
 
     def compute(self, today, assets, out, closes):
+        # TODO：改用Returns计算
         # 计算尾部11个月(前12个月到前1个月之间的11个月)的累计收益率
         last_11m_loc = int(self.window_length / 12 / 2 * 11)
         last_1m_loc = int(self.window_length / 12 / 2)

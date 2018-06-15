@@ -126,8 +126,10 @@ class Fundamentals(object):
         """查询营运能力指标名称（输入编码）"""
         verify_code(code)
         return YYNL_ITEM_MAPS[code]
-
-    concept_maps = query_maps('infoes', 'concept')
+    
+    @classlazyval
+    def concept_maps(self):
+        return query_maps('infoes', 'concept')
 
     @staticmethod
     def concept_col_name(code):
@@ -191,8 +193,6 @@ class Fundamentals(object):
         out = {k: v for k, v in YYNL_ITEM_MAPS.items() if key in v}
         return out
 
-    concept_maps = query_maps('infoes', 'concept')
-
     @staticmethod
     def concept_col_code(key):
         """模糊查询概念编码（输入概念关键词）"""
@@ -207,7 +207,9 @@ class Fundamentals(object):
     # 下列方法。数字自0开始，长度为len(类别)
     # 输入数字（如触发Keyerror，请减少数值再次尝试
 
-    supper_sector_maps = query_maps('infoes', 'super_sector_code', True)
+    @classlazyval
+    def supper_sector_maps(self):
+        return query_maps('infoes', 'super_sector_code', True)
 
     @staticmethod
     def supper_sector_cname(code):
@@ -218,7 +220,9 @@ class Fundamentals(object):
         maps = query_maps(table_name, attr_name, True)
         return maps[code]
 
-    sector_maps = query_maps('infoes', 'sector_code', True)
+    @classlazyval
+    def sector_maps(self):
+        return query_maps('infoes', 'sector_code', True)
 
     @staticmethod
     def sector_cname(code):
@@ -247,7 +251,9 @@ class Fundamentals(object):
         maps = query_maps(table_name, attr_name)
         return maps[code]
 
-    region_maps = query_maps('infoes', 'region')
+    @classlazyval
+    def region_maps(self):
+        return query_maps('infoes', 'region')
 
     @staticmethod
     def region_cname(code):
@@ -267,7 +273,9 @@ class Fundamentals(object):
         out = {k: v for k, v in maps.items() if key in v}
         return out
 
-    csrc_industry_maps = query_maps('infoes', 'csrc_industry')
+    @classlazyval
+    def csrc_industry_maps(self):
+        return query_maps('infoes', 'csrc_industry')
 
     @staticmethod
     def csrc_industry_cname(code):
@@ -287,7 +295,9 @@ class Fundamentals(object):
         out = {k: v for k, v in maps.items() if key in v}
         return out
 
-    ths_industry_maps = query_maps('infoes', 'ths_industry')
+    @classlazyval
+    def ths_industry_maps(self):
+        return query_maps('infoes', 'ths_industry')
 
     @staticmethod
     def ths_industry_cname(code):
@@ -307,7 +317,9 @@ class Fundamentals(object):
         out = {k: v for k, v in maps.items() if key in v}
         return out
 
-    cn_industry_maps = query_maps('infoes', 'cn_industry')
+    @classlazyval
+    def cn_industry_maps(self):
+        return query_maps('infoes', 'cn_industry')
 
     @staticmethod
     def cn_industry_cname(code):

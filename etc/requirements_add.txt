@@ -30,3 +30,6 @@ cvxpy>=1.0.3
 
 # 绘图
 plotly>=2.7.0
+
+# 量化分析图`alphalens`
+-e git+https://github.com/liudengfeng/cufflinks#egg=cufflinks

@@ -1,8 +1,12 @@
 """
+简单版本量化分析图
+
 定义标准ohlcv技术指标图，简化plotly配置
 
 无论是网页，还是Jupyter Notebook，光标悬停位置都可以读取日期信息，所以不显示x轴刻度
 而各项目名称包含了指标名称，故无需再使用图例
+
+建议使用`cufflinks`
 """
 import pytz
 import numpy as np

@@ -33,3 +33,6 @@ plotly>=2.7.0
 
 # 量化分析图`alphalens`
 -e git+https://github.com/liudengfeng/cufflinks#egg=cufflinks
+
+# 插件工具
+ipywidgets>=7.2.1

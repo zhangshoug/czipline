@@ -14,12 +14,13 @@ from ..utils.math_utils import nanmean, nansum
 from ..utils.numpy_utils import changed_locations
 from .data.equity_pricing import USEquityPricing
 from .factors import CustomFactor, DailyReturns, SimpleMovingAverage
-from .filters import CustomFilter
+from .filters import CustomFilter, StaticSids
 from .fundamentals.reader import Fundamentals
 
 ##################
 # 辅助函数
 ##################
+
 
 def continuous_num(bool_values, include=False):
     """尾部连续为真累计数"""
@@ -87,9 +88,11 @@ def _select_annual_indices(dates):
         locs.append(loc)
     return locs
 
+
 ##################
 # 自定义因子
 ##################
+
 
 class SuccessiveYZ(CustomFactor):
     """
@@ -205,9 +208,11 @@ class SuccessiveSuspensionDays(CustomFactor):
         is_suspension = vs == 0
         out[:] = continuous_num(is_suspension, include)
 
+
 ##################
 # 过滤器
 ##################
+
 
 def IsST():
     """
@@ -389,9 +394,40 @@ class IsResumed(CustomFilter):
         not_new = cmv[0] > 0  # 通过流通市值排除新股上市
         out[:] = is_tp & is_fp & not_new
 
+
+def BlackNames(stock_codes):
+    """
+    股票黑名单过滤器
+
+    ``StaticAssets`` is mostly useful for debugging or for interactively
+    computing pipeline terms for a fixed set of assets that are known ahead of
+    time.
+
+    Parameters
+    ----------
+    stock_codes : iterable[stock code]
+        An iterable of stock code for which to filter.
+
+    用法
+    ----
+        如需要排除过滤掉黑名单，只需要在返回结果前添加`~`
+    >>> black_stocks = ['000033','300156']
+    >>> bns = BlackNames(black_stocks)
+    >>> # 在pipeline参数`screen`中使用
+    >>> screen = ~bns
+    """
+    assert isinstance(stock_codes, list), '必须以列表形式传入参数stock_codes'
+    if len(stock_codes):
+        sids = frozenset([int(stock_code) for stock_code in stock_codes])
+    else:
+        sids = frozenset([])
+    return StaticSids(sids=sids) 
+
+
 ##################
 # 财务相关因子
 ##################
+
 
 class AnnualFinancalData(CustomFactor):
     """
@@ -494,9 +530,11 @@ class TTMDividend(CustomFactor):
         loc = changed_locations(mns, include_first=True)[-12:]
         out[:] = nanmean(ds[loc], axis=0)
 
+
 ##################
 # 估值相关因子
 ##################
+
 
 # 参考网址：https://www.quantopian.com/help/fundamentals#valuation
 def enterprise_value():

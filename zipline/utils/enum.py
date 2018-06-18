@@ -38,7 +38,8 @@ _inttypes_map = {
     }
 }
 _inttypes = list(
-    pd.Series(_inttypes_map).reindex(
+    # # 必须先排序
+    pd.Series(_inttypes_map).sort_index().reindex(
         range(max(_inttypes_map.keys())),
         method='bfill',
     ),

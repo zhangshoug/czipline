@@ -41,7 +41,7 @@ def normalized_margins_data(df):
     df.rename(columns={v: k for k, v in MARGIN_MAPS.items()}, inplace=True)
     return df
 
-
+# # TODO:使用日线数据简化代替
 def normalized_short_names_data(df):
     """股票简称数据"""
     # 股票未上市或者新上市，暂无股票代码
@@ -53,7 +53,7 @@ def normalized_short_names_data(df):
     df['asof_date'] = df['asof_date'] - pd.Timedelta(days=1)
     return df
 
-
+# #　TODO:股票简称-> 转换
 def normalized_special_treatments_data(df):
     """特殊处理历史"""
     # 股票未上市或者新上市，暂无股票代码

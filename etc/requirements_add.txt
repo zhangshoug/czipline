@@ -1,5 +1,5 @@
 # A股数据工具包
--e git+https://github.com/liudengfeng/cswd#egg=cswd
+-e git+https://github.com/zhangshoug/cswd#egg=cswd
 
 cloudpickle>=0.2.1
 
@@ -9,7 +9,7 @@ cloudpickle>=0.2.1
 datashape>=0.5.2
 
 # 2. odo
--e git+https://github.com/liudengfeng/odo#egg=odo
+-e git+https://github.com/zhangshoug/odo#egg=odo
 
 # 3. blaze
 -e git+https://github.com/liudengfeng/blaze#egg=blaze

@@ -41,7 +41,7 @@ Zipline目前有一个免费的[回测平台](https://www.quantopian.com)，可�
 
 
 ```bash
-$ git clone https://github.com/liudengfeng/czipline.git
+$ git clone https://github.com/zhangshoug/czipline.git
 ```
 ##### 建立环境
 ```bash
